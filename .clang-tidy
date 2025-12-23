@@ -6,6 +6,7 @@ Checks: >
   performance-*,
   readability-*,
   modernize-*,
+  -readability-identifier-length,
   -modernize-use-trailing-return-type,
   -google-readability-todo,
 

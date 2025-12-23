@@ -11,19 +11,18 @@
 #include <string>
 #include <string_view>
 
-// TODO(talal): Move this to own file once working.
+// TODO: Move this to own file once working.
 class url {
 public:
-    explicit url(const std::string& url_string) {
-        std::string_view view{url_string};
-        auto scheme_sep = view.find("://");
+    explicit url(std::string_view url_string) {
+        const auto scheme_sep = url_string.find("://");
 
-        scheme_ = std::string{view.substr(0, scheme_sep)};
-        std::string_view rest = view.substr(scheme_sep + 3);
+        scheme_ = std::string{url_string.substr(0, scheme_sep)};
+        const std::string_view rest = url_string.substr(scheme_sep + 3);
 
         assert("ERROR: Only scheme http is supported" && scheme_ == "http");
 
-        auto path_sep = rest.find('/');
+        const auto path_sep = rest.find('/');
         if (path_sep == std::string_view::npos) {
             host_ = std::string{rest};
             path_ = "/";
@@ -33,12 +32,12 @@ public:
         }
     }
 
-    std::string request() {
-        // TODO(talal): Move all this connection logic out?
+    [[nodiscard]] std::string request() const {
+        // TODO: Move all this connection logic out?
         asio::io_context io_context;
 
         asio::ip::tcp::resolver resolver(io_context);
-        auto endpoints = resolver.resolve(host_, "80");
+        const auto endpoints = resolver.resolve(host_, "80");
 
         asio::ip::tcp::socket socket(io_context);
         asio::connect(socket, endpoints);
@@ -77,14 +76,14 @@ public:
                 break;
             }
 
-            auto colon = line.find(':');
+            const auto colon = line.find(':');
             std::string header = line.substr(0, colon);
             std::string value = line.substr(colon + 1);
 
             std::ranges::transform(
-                header, header.begin(), [](unsigned char chr) { return std::tolower(chr); });
+                header, header.begin(), [](unsigned char c) { return std::tolower(c); });
 
-            auto is_space = [](unsigned char chr) { return std::isspace(chr); };
+            const auto is_space = [](unsigned char c) { return std::isspace(c); };
             auto trimmed_value = value | std::views::drop_while(is_space) | std::views::reverse |
                                  std::views::drop_while(is_space) | std::views::reverse |
                                  std::ranges::to<std::string>();
@@ -96,10 +95,10 @@ public:
                !response_headers.contains("transfer-encoding"));
         assert("ERROR: content-encoding" && !response_headers.contains("content-encoding"));
 
-        asio::error_code err_c;
-        asio::read(socket, response_buffer, asio::transfer_all(), err_c);
-        if (err_c && err_c != asio::error::eof) {
-            throw asio::system_error(err_c);
+        asio::error_code ec;
+        asio::read(socket, response_buffer, asio::transfer_all(), ec);
+        if (ec && ec != asio::error::eof) {
+            std::cerr << "Error reading: " << ec.message() << "\n";
         }
         socket.close();
 
@@ -113,7 +112,28 @@ private:
     std::string path_;
 };
 
-int main() {
-    url example("http://example.org/index.html");
-    std::println("{}", example.request());
+void show(std::string_view body) {
+    bool in_tag = false;
+    for (char c : body) {
+        if (c == '<') {
+            in_tag = true;
+        } else if (c == '>') {
+            in_tag = false;
+        } else if (!in_tag) {
+            std::print("{}", c);
+        }
+    }
+}
+
+void load(const url& target) {
+    const std::string body = target.request();
+    show(body);
+}
+
+int main(int argc, char* argv[]) {
+    if (argc == 1) {
+        std::cerr << "ERROR: No arguments given\n";
+        return -1;
+    }
+    load(url(argv[1]));
 }
