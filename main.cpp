@@ -96,7 +96,11 @@ public:
                !response_headers.contains("transfer-encoding"));
         assert("ERROR: content-encoding" && !response_headers.contains("content-encoding"));
 
-        asio::read(socket, response_buffer, asio::transfer_all());
+        asio::error_code err_c;
+        asio::read(socket, response_buffer, asio::transfer_all(), err_c);
+        if (err_c && err_c != asio::error::eof) {
+            throw asio::system_error(err_c);
+        }
         socket.close();
 
         return std::string{asio::buffers_begin(response_buffer.data()),
