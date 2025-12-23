@@ -1,0 +1,13 @@
+---
+Checks: >
+  -*,
+  google-*,
+  bugprone-*,
+  performance-*,
+  readability-*,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  -google-readability-todo,
+
+HeaderFilterRegex: "^(?!.*(third_party|build|include)).*"
+WarningsAsErrors: "*"
