@@ -1,5 +1,7 @@
 #include <iostream>
 #include <print>
+#include <string_view>
+#include "browser/browser.hpp"
 #include "browser/url.hpp"
 
 void show(std::string_view body) {
@@ -24,6 +26,10 @@ int main(int argc, char* argv[]) {
     try {
         url target{argv[1]};
         show(target.request());
+
+        browser browser_instance{};
+        browser_instance.load(target);
+        browser_instance.run();
     } catch (const std::exception& e) {
         std::cerr << "ERROR: " << e.what() << ".\n";
         return -1;

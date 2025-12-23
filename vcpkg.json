@@ -6,6 +6,7 @@
     {
       "name": "asio",
       "features": ["openssl"]
-    }
+    },
+    "sfml"
   ]
 }

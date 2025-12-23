@@ -7,10 +7,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(asio CONFIG REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(SFML 3 REQUIRED COMPONENTS Graphics Window System)
 
 add_executable(toy-browser 
     src/main.cpp 
     src/url.cpp
+    src/browser.cpp
 )
 
 target_include_directories(toy-browser PRIVATE include)
@@ -18,7 +20,9 @@ target_include_directories(toy-browser PRIVATE include)
 target_link_libraries(toy-browser PRIVATE 
     asio::asio 
     OpenSSL::SSL 
-    OpenSSL::Crypto
+    SFML::Graphics
+    SFML::Window
+    SFML::System 
 )
 
 target_compile_definitions(toy-browser PRIVATE ASIO_STANDALONE)
