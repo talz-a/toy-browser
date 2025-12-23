@@ -62,5 +62,6 @@ url::url(std::string_view url_string) {
 
     asio::ip::tcp::socket socket(io_context);
     asio::connect(socket, endpoints);
+
     return send_request(socket, request_text);
 }

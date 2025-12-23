@@ -1,7 +1,14 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
+#include <string_view>
+#include <vector>
 #include "browser/url.hpp"
+
+struct draw_text {
+    float x, y;
+    std::string text;
+};
 
 class browser {
 public:
@@ -12,20 +19,12 @@ public:
     void run();
 
 private:
+    [[nodiscard]] static std::string lex(std::string_view body);
+
     sf::RenderWindow window_;
+    sf::Font font_;
+    std::vector<draw_text> display_list_;
+
     static constexpr unsigned int WIDTH = 800;
     static constexpr unsigned int HEIGHT = 600;
-
-    sf::Font font_;
-    bool font_loaded_{false};
 };
-
-// while (window.isOpen()) {
-//     while (const std::optional event = window.pollEvent()) {
-//         if (event->is<sf::Event::Closed>()) {
-//             window.close();
-//         }
-//     }
-//     window.clear();
-//     window.display();
-// }

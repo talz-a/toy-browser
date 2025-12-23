@@ -1,16 +1,37 @@
 #include "browser/browser.hpp"
-#include <iostream>
+#include <SFML/Graphics/Color.hpp>
+#include <SFML/Graphics/Text.hpp>
 
 browser::browser() : window_{sf::VideoMode({WIDTH, HEIGHT}), "Toy Browser"} {
-    if (!font_.openFromFile("/System/Library/Fonts/Supplemental/Arial.ttf")) {
-        std::cerr << "Warning: Could not load font. Text will not render.\n";
-    } else {
-        font_loaded_ = true;
+    if (!font_.openFromFile("/System/Library/Fonts/SFNS.ttf")) {
+        throw std::runtime_error("ERROR: No font loaded.");
     }
 }
 
+std::string browser::lex(std::string_view body) {
+    std::string text;
+    bool in_tag = false;
+    for (char c : body) {
+        if (c == '<') {
+            in_tag = true;
+        } else if (c == '>') {
+            in_tag = false;
+        } else if (!in_tag) {
+            text += c;
+        }
+    }
+
+    return text;
+}
+
 void browser::load(const url& target_url) {
-    // std::string body = target_url.request();
+    std::string body = target_url.request();
+    std::string text = lex(body);
+
+    display_list_.clear();
+    for (char c : text) {
+        display_list_.push_back({100.0F, 100.0F, std::string(1, c)});
+    }
 }
 
 void browser::run() {
@@ -23,24 +44,23 @@ void browser::run() {
 
         window_.clear(sf::Color::White);
 
-        sf::RectangleShape rect({390.f, 280.f});
-        rect.setPosition({10.f, 20.f});
-        rect.setOutlineColor(sf::Color::Black);
-        rect.setOutlineThickness(1.f);
-        rect.setFillColor(sf::Color::Transparent);
-        window_.draw(rect);
+        constexpr float HSTEP = 13;
+        constexpr float VSTEP = 18;
+        constexpr int FONT_SIZE = 16;
+        float cursor_x = HSTEP;
+        float cursor_y = VSTEP;
+        for (const auto& cmd : display_list_) {
+            sf::Text label(font_, cmd.text, FONT_SIZE);
+            label.setPosition({cursor_x, cursor_y});
+            cursor_x += HSTEP;
 
-        sf::CircleShape oval(25.f);  // radius
-        oval.setPosition({100.f, 100.f});
-        oval.setOutlineColor(sf::Color::Black);
-        oval.setOutlineThickness(1.f);
-        window_.draw(oval);
+            if (cursor_x >= WIDTH - HSTEP) {
+                cursor_y += VSTEP;
+                cursor_x = HSTEP;
+            }
 
-        if (font_loaded_) {
-            sf::Text text(font_, "Hi!", 20);
-            text.setPosition({200.f, 150.f});
-            text.setFillColor(sf::Color::Black);
-            window_.draw(text);
+            label.setFillColor(sf::Color::Black);
+            window_.draw(label);
         }
 
         window_.display();
