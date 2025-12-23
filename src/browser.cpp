@@ -1,6 +1,7 @@
 #include "browser/browser.hpp"
 #include <SFML/Graphics/Color.hpp>
 #include <SFML/Graphics/Text.hpp>
+#include <cstdio>
 
 browser::browser() : window_{sf::VideoMode({WIDTH, HEIGHT}), "Toy Browser"} {
     if (!font_.openFromFile("/System/Library/Fonts/SFNS.ttf")) {
@@ -25,8 +26,14 @@ std::string browser::lex(std::string_view body) {
 }
 
 void browser::load(const url& target_url) {
-    std::string body = target_url.request();
-    std::string text = lex(body);
+    auto result = target_url.request();
+
+    if (!result) {
+        std::println(stderr, "ERROR: {}", static_cast<int>(result.error()));
+        return;
+    }
+
+    std::string text = lex(result.value());
 
     display_list_.clear();
     for (char c : text) {

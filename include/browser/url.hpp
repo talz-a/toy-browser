@@ -2,16 +2,24 @@
 
 #include <asio.hpp>
 #include <asio/ssl.hpp>
+#include <expected>
 #include <map>
-#include <ranges>
-#include <string>
+
 #include <string_view>
+
+enum class browser_error : std::uint8_t {
+    network_error,
+    unsupported_transfer_encoding,
+    unsupported_content_encoding,
+    invalid_response,
+    ssl_error
+};
 
 class url {
 public:
     explicit url(std::string_view url_string);
 
-    [[nodiscard]] std::string request() const;
+    [[nodiscard]] std::expected<std::string, browser_error> request() const;
 
 private:
     std::string scheme_;
@@ -19,12 +27,24 @@ private:
     std::string path_;
     int port_;
 
+    static constexpr unsigned int HTTP_PORT = 80;
+    static constexpr unsigned int HTTPS_PORT = 443;
+
     template <typename Stream>
-    std::string send_request(Stream& stream, const std::string& request_text) const {
-        asio::write(stream, asio::buffer(request_text));
+    std::expected<std::string, browser_error> send_request(Stream& stream,
+                                                           const std::string& request_text) const {
+        asio::error_code ec;
+
+        asio::write(stream, asio::buffer(request_text), ec);
+        if (ec) {
+            return std::unexpected(browser_error::network_error);
+        }
 
         asio::streambuf response_buffer;
-        asio::read_until(stream, response_buffer, "\r\n");
+        asio::read_until(stream, response_buffer, "\r\n", ec);
+        if (ec) {
+            return std::unexpected(browser_error::network_error);
+        }
 
         std::istream response_stream(&response_buffer);
         std::string status_line;
@@ -46,33 +66,36 @@ private:
 
             if (const auto colon = line.find(':'); colon != std::string::npos) {
                 std::string header = line.substr(0, colon);
-                std::string value = line.substr(colon + 1);
+                std::string raw_value = line.substr(colon + 1);
 
                 std::ranges::transform(
                     header, header.begin(), [](unsigned char c) { return std::tolower(c); });
 
-                auto is_space = [](unsigned char c) { return std::isspace(c); };
-                auto trimmed_value = value | std::views::drop_while(is_space) |
-                                     std::views::reverse | std::views::drop_while(is_space) |
-                                     std::views::reverse | std::ranges::to<std::string>();
+                std::string_view sv = raw_value;
 
-                response_headers[header] = trimmed_value;
+                while (!sv.empty() && std::isspace(static_cast<unsigned char>(sv.front()))) {
+                    sv.remove_prefix(1);
+                }
+
+                while (!sv.empty() && std::isspace(static_cast<unsigned char>(sv.back()))) {
+                    sv.remove_suffix(1);
+                }
+
+                response_headers[header] = std::string(sv);
             }
         }
 
         if (response_headers.contains("transfer-encoding")) {
-            throw std::runtime_error("ERROR: Transfer-encoding not supported.");
+            return std::unexpected(browser_error::unsupported_transfer_encoding);
         }
         if (response_headers.contains("content-encoding")) {
-            throw std::runtime_error("ERROR: Content-encoding not supported.");
+            return std::unexpected(browser_error::unsupported_content_encoding);
         }
 
-        try {
-            asio::read(stream, response_buffer, asio::transfer_all());
-        } catch (const asio::system_error& e) {
-            if (e.code() != asio::error::eof) {
-                throw;
-            }
+        asio::read(stream, response_buffer, asio::transfer_all(), ec);
+
+        if (ec && ec != asio::error::eof) {
+            return std::unexpected(browser_error::network_error);
         }
 
         return std::string{asio::buffers_begin(response_buffer.data()),

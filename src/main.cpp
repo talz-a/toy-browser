@@ -1,11 +1,11 @@
-#include <iostream>
+#include <print>
 #include <string_view>
 #include "browser/browser.hpp"
 #include "browser/url.hpp"
 
 int main(int argc, char* argv[]) {
     if (argc == 1) {
-        std::cerr << "ERROR: No arguments given.\n";
+        std::println(stderr, "ERROR: No arguments given.");
         return -1;
     }
 
@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
         browser_instance.load(target);
         browser_instance.run();
     } catch (const std::exception& e) {
-        std::cerr << "ERROR: " << e.what() << ".\n";
+        std::println(stderr, "ERROR {}.", e.what());
         return -1;
     }
 
