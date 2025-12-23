@@ -8,7 +8,7 @@ constexpr int HTTPS_PORT = 443;
 url::url(std::string_view url_string) {
     const auto scheme_sep = url_string.find("://");
     if (scheme_sep == std::string_view::npos) {
-        throw std::runtime_error("ERROR: No scheme found");
+        throw std::runtime_error("ERROR: No scheme found.");
     }
 
     scheme_ = std::string{url_string.substr(0, scheme_sep)};
@@ -19,7 +19,7 @@ url::url(std::string_view url_string) {
     } else if (scheme_ == "https") {
         port_ = HTTPS_PORT;
     } else {
-        throw std::runtime_error("ERROR: Only scheme http and https are supported");
+        throw std::runtime_error("ERROR: Only scheme http and https are supported.");
     }
 
     const auto path_sep = rest.find('/');
@@ -52,7 +52,7 @@ url::url(std::string_view url_string) {
         asio::ssl::stream<asio::ip::tcp::socket> stream(io_context, ctx);
 
         if (!SSL_set_tlsext_host_name(stream.native_handle(), host_.c_str())) {
-            throw std::runtime_error("SSL SNI setup failed");
+            throw std::runtime_error("ERROR: SSL SNI setup failed.");
         }
 
         asio::connect(stream.lowest_layer(), endpoints);

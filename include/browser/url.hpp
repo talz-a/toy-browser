@@ -61,10 +61,10 @@ private:
         }
 
         if (response_headers.contains("transfer-encoding")) {
-            throw std::runtime_error("ERROR: Transfer-encoding not supported");
+            throw std::runtime_error("ERROR: Transfer-encoding not supported.");
         }
         if (response_headers.contains("content-encoding")) {
-            throw std::runtime_error("ERROR: Content-encoding not supported");
+            throw std::runtime_error("ERROR: Content-encoding not supported.");
         }
 
         try {

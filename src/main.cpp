@@ -17,7 +17,7 @@ void show(std::string_view body) {
 
 int main(int argc, char* argv[]) {
     if (argc == 1) {
-        std::cerr << "ERROR: No arguments given\n";
+        std::cerr << "ERROR: No arguments given.\n";
         return -1;
     }
 
@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
         url target{argv[1]};
         show(target.request());
     } catch (const std::exception& e) {
-        std::cerr << "ERROR: " << e.what() << "\n";
+        std::cerr << "ERROR: " << e.what() << ".\n";
         return -1;
     }
 
