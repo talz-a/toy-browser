@@ -1,7 +1,7 @@
 #include "browser/browser.hpp"
 #include <SFML/Graphics/Color.hpp>
 #include <SFML/Graphics/Text.hpp>
-#include <cstdio>
+#include <print>
 
 browser::browser() : window_{sf::VideoMode({WIDTH, HEIGHT}), "Toy Browser"} {
     if (!font_.openFromFile("/System/Library/Fonts/SFNS.ttf")) {
