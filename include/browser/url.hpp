@@ -4,7 +4,6 @@
 #include <asio/ssl.hpp>
 #include <expected>
 #include <map>
-
 #include <string_view>
 
 enum class browser_error : std::uint8_t {

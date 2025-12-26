@@ -1,6 +1,5 @@
 #include "browser/url.hpp"
 #include <openssl/ssl.h>
-#include <cctype>
 #include <format>
 #include <stdexcept>
 

@@ -7,7 +7,7 @@
 
 struct draw_text {
     float x, y;
-    std::string text;
+    sf::String text;
 };
 
 class browser {

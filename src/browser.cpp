@@ -1,10 +1,9 @@
 #include "browser/browser.hpp"
-#include <SFML/Graphics/Color.hpp>
-#include <SFML/Graphics/Text.hpp>
-#include <print>
+#include <SFML/Graphics.hpp>
 
 browser::browser() : window_{sf::VideoMode({WIDTH, HEIGHT}), "Toy Browser"} {
-    if (!font_.openFromFile("/System/Library/Fonts/SFNS.ttf")) {
+    // NOTE: This only works on my computer; Add this to assets.
+    if (!font_.openFromFile("/usr/share/fonts/google-noto-sans-cjk-vf-fonts/NotoSansCJK-VF.ttc")) {
         throw std::runtime_error("ERROR: No font loaded.");
     }
 }
@@ -21,23 +20,26 @@ std::string browser::lex(std::string_view body) {
             text += c;
         }
     }
-
     return text;
 }
 
 void browser::load(const url& target_url) {
     auto result = target_url.request();
-
     if (!result) {
-        std::println(stderr, "ERROR: {}", static_cast<int>(result.error()));
         return;
     }
 
-    std::string text = lex(result.value());
+    std::string raw_utf8 = lex(result.value());
+    sf::String unicode_text = sf::String::fromUtf8(raw_utf8.begin(), raw_utf8.end());
 
     display_list_.clear();
-    for (char c : text) {
-        display_list_.push_back({100.0F, 100.0F, std::string(1, c)});
+
+    constexpr float DISPLAYLIST_X = 100.F;
+    constexpr float DISPLAYLIST_Y = 100.F;
+
+    for (char32_t codepoint : unicode_text) {
+        sf::String single_char(codepoint);
+        display_list_.push_back({DISPLAYLIST_X, DISPLAYLIST_Y, single_char});
     }
 }
 
@@ -56,18 +58,19 @@ void browser::run() {
         constexpr int FONT_SIZE = 16;
         float cursor_x = HSTEP;
         float cursor_y = VSTEP;
+
         for (const auto& cmd : display_list_) {
             sf::Text label(font_, cmd.text, FONT_SIZE);
             label.setPosition({cursor_x, cursor_y});
+            label.setFillColor(sf::Color::Black);
+            window_.draw(label);
+
             cursor_x += HSTEP;
 
             if (cursor_x >= WIDTH - HSTEP) {
                 cursor_y += VSTEP;
                 cursor_x = HSTEP;
             }
-
-            label.setFillColor(sf::Color::Black);
-            window_.draw(label);
         }
 
         window_.display();
