@@ -1,5 +1,6 @@
 #include "browser/browser.hpp"
 #include <SFML/Graphics.hpp>
+#include <string>
 
 browser::browser() : window_{sf::VideoMode({WIDTH, HEIGHT}), "Toy Browser"} {
     // NOTE: This only works on my computer; Add this to assets.
@@ -34,8 +35,8 @@ void browser::load(const url& target_url) {
 
     display_list_.clear();
 
-    constexpr float DISPLAYLIST_X = 100.F;
-    constexpr float DISPLAYLIST_Y = 100.F;
+    constexpr float DISPLAYLIST_X = 100;
+    constexpr float DISPLAYLIST_Y = 100;
 
     for (char32_t codepoint : unicode_text) {
         sf::String single_char(codepoint);
