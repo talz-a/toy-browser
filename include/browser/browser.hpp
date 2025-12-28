@@ -2,8 +2,10 @@
 
 #include <SFML/Graphics.hpp>
 #include <string_view>
-#include <vector>
 #include "browser/url.hpp"
+
+static constexpr unsigned int WIDTH = 800;
+static constexpr unsigned int HEIGHT = 600;
 
 struct draw_text {
     float x, y;
@@ -21,10 +23,9 @@ public:
 private:
     [[nodiscard]] static std::string lex(std::string_view body);
 
+    float scroll_ = 0;
+
     sf::RenderWindow window_;
     sf::Font font_;
     std::vector<draw_text> display_list_;
-
-    static constexpr unsigned int WIDTH = 800;
-    static constexpr unsigned int HEIGHT = 600;
 };

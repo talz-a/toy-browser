@@ -1,6 +1,34 @@
 #include "browser/browser.hpp"
 #include <SFML/Graphics.hpp>
+#include <SFML/Window/Keyboard.hpp>
+#include <print>
 #include <string>
+#include <vector>
+
+constexpr float HSTEP = 13;
+constexpr float VSTEP = 18;
+constexpr float SCROLL_STEP = 100;
+constexpr int FONT_SIZE = 16;
+
+std::vector<draw_text> layout(std::string_view text) {
+    std::vector<draw_text> display_list;
+    sf::String unicode_text = sf::String::fromUtf8(text.begin(), text.end());
+
+    float cursor_x = HSTEP;
+    float cursor_y = VSTEP;
+    for (char32_t codepoint : unicode_text) {
+        sf::String single_char(codepoint);
+        display_list.push_back({cursor_x, cursor_y, single_char});
+
+        cursor_x += HSTEP;
+        if (cursor_x >= WIDTH - HSTEP) {
+            cursor_y += VSTEP;
+            cursor_x = HSTEP;
+        }
+    }
+
+    return display_list;
+}
 
 browser::browser() : window_{sf::VideoMode({WIDTH, HEIGHT}), "Toy Browser"} {
     // NOTE: This only works on my computer; Add this to assets.
@@ -29,47 +57,28 @@ void browser::load(const url& target_url) {
     if (!result) return;
 
     std::string raw_utf8 = lex(result.value());
-    sf::String unicode_text = sf::String::fromUtf8(raw_utf8.begin(), raw_utf8.end());
-
-    display_list_.clear();
-
-    constexpr float DISPLAYLIST_X = 100;
-    constexpr float DISPLAYLIST_Y = 100;
-
-    for (char32_t codepoint : unicode_text) {
-        sf::String single_char(codepoint);
-        display_list_.push_back({DISPLAYLIST_X, DISPLAYLIST_Y, single_char});
-    }
+    display_list_ = layout(raw_utf8);
 }
 
 void browser::run() {
     while (window_.isOpen()) {
         while (const std::optional event = window_.pollEvent()) {
             if (event->is<sf::Event::Closed>()) window_.close();
-        }
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Down)) scroll_ += SCROLL_STEP;
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Up)) scroll_ -= SCROLL_STEP;
 
-        window_.clear(sf::Color::White);
+            window_.clear(sf::Color::White);
 
-        constexpr float HSTEP = 13;
-        constexpr float VSTEP = 18;
-        constexpr int FONT_SIZE = 16;
-        float cursor_x = HSTEP;
-        float cursor_y = VSTEP;
-
-        for (const auto& cmd : display_list_) {
-            sf::Text label(font_, cmd.text, FONT_SIZE);
-            label.setPosition({cursor_x, cursor_y});
-            label.setFillColor(sf::Color::Black);
-            window_.draw(label);
-
-            cursor_x += HSTEP;
-
-            if (cursor_x >= WIDTH - HSTEP) {
-                cursor_y += VSTEP;
-                cursor_x = HSTEP;
+            for (const auto& [x, y, c] : display_list_) {
+                if (y > scroll_ + HEIGHT) continue;
+                if (y + VSTEP < scroll_) continue;
+                sf::Text label(font_, c, FONT_SIZE);
+                label.setPosition({x, y - scroll_});
+                label.setFillColor(sf::Color::Black);
+                window_.draw(label);
             }
-        }
 
-        window_.display();
+            window_.display();
+        }
     }
 }
