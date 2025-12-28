@@ -14,7 +14,6 @@ int main(int argc, char* argv[]) {
         url target{argv[1]};
         browser browser_instance{};
         browser_instance.load(target);
-        browser_instance.run();
     } catch (const std::exception& e) {
         std::println(std::cerr, "ERROR {}", e.what());
         return -1;

@@ -5,9 +5,7 @@
 
 url::url(std::string_view url_string) {
     const auto scheme_sep = url_string.find("://");
-    if (scheme_sep == std::string_view::npos) {
-        throw std::runtime_error("ERROR: No scheme found.");
-    }
+    if (scheme_sep == std::string_view::npos) throw std::runtime_error("ERROR: No scheme found.");
 
     scheme_ = std::string{url_string.substr(0, scheme_sep)};
     const std::string_view rest = url_string.substr(scheme_sep + 3);
@@ -42,9 +40,7 @@ url::url(std::string_view url_string) {
     asio::ip::tcp::resolver resolver(io_context);
     const auto endpoints = resolver.resolve(host_, std::to_string(port_), ec);
 
-    if (ec) {
-        return std::unexpected(browser_error::network_error);
-    }
+    if (ec) return std::unexpected(browser_error::network_error);
 
     std::string request_text = std::format("GET {} HTTP/1.0\r\n", path_);
     request_text += std::format("Host: {}\r\n", host_);
@@ -54,9 +50,7 @@ url::url(std::string_view url_string) {
         asio::ssl::context ctx(asio::ssl::context::sslv23);
 
         std::ignore = ctx.set_default_verify_paths(ec);
-        if (ec) {
-            return std::unexpected(browser_error::ssl_error);
-        }
+        if (ec) return std::unexpected(browser_error::ssl_error);
 
         asio::ssl::stream<asio::ip::tcp::socket> stream(io_context, ctx);
 
@@ -65,14 +59,10 @@ url::url(std::string_view url_string) {
         }
 
         asio::connect(stream.lowest_layer(), endpoints, ec);
-        if (ec) {
-            return std::unexpected(browser_error::network_error);
-        }
+        if (ec) return std::unexpected(browser_error::network_error);
 
         std::ignore = stream.handshake(asio::ssl::stream_base::client, ec);
-        if (ec) {
-            return std::unexpected(browser_error::ssl_error);
-        }
+        if (ec) return std::unexpected(browser_error::ssl_error);
 
         return send_request(stream, request_text);
     }
@@ -80,9 +70,7 @@ url::url(std::string_view url_string) {
     asio::ip::tcp::socket socket(io_context);
 
     asio::connect(socket, endpoints, ec);
-    if (ec) {
-        return std::unexpected(browser_error::network_error);
-    }
+    if (ec) return std::unexpected(browser_error::network_error);
 
     return send_request(socket, request_text);
 }
