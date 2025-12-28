@@ -12,3 +12,6 @@ Checks: >
 
 HeaderFilterRegex: "^(?!.*(third_party|build|include)).*"
 WarningsAsErrors: "*"
+
+CheckOptions:
+  readability-braces-around-statements.ShortStatementLines: 2

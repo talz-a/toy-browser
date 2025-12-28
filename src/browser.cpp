@@ -26,9 +26,7 @@ std::string browser::lex(std::string_view body) {
 
 void browser::load(const url& target_url) {
     auto result = target_url.request();
-    if (!result) {
-        return;
-    }
+    if (!result) return;
 
     std::string raw_utf8 = lex(result.value());
     sf::String unicode_text = sf::String::fromUtf8(raw_utf8.begin(), raw_utf8.end());
@@ -47,9 +45,7 @@ void browser::load(const url& target_url) {
 void browser::run() {
     while (window_.isOpen()) {
         while (const std::optional event = window_.pollEvent()) {
-            if (event->is<sf::Event::Closed>()) {
-                window_.close();
-            }
+            if (event->is<sf::Event::Closed>()) window_.close();
         }
 
         window_.clear(sf::Color::White);

@@ -10,3 +10,5 @@ PointerAlignment: Left
 BinPackArguments: false
 IndentAccessModifiers: false
 AccessModifierOffset: -4
+
+AllowShortIfStatementsOnASingleLine: WithoutElse

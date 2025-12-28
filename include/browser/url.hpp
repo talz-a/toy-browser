@@ -35,33 +35,24 @@ private:
         asio::error_code ec;
 
         asio::write(stream, asio::buffer(request_text), ec);
-        if (ec) {
-            return std::unexpected(browser_error::network_error);
-        }
+        if (ec) return std::unexpected(browser_error::network_error);
 
         asio::streambuf response_buffer;
         asio::read_until(stream, response_buffer, "\r\n", ec);
-        if (ec) {
-            return std::unexpected(browser_error::network_error);
-        }
+        if (ec) return std::unexpected(browser_error::network_error);
 
         std::istream response_stream(&response_buffer);
         std::string status_line;
         std::getline(response_stream, status_line);
-        if (!status_line.empty() && status_line.back() == '\r') {
-            status_line.pop_back();
-        }
+        if (!status_line.empty() && status_line.back() == '\r') status_line.pop_back();
 
         std::map<std::string, std::string> response_headers;
         while (true) {
             std::string line;
             std::getline(response_stream, line);
-            if (!line.empty() && line.back() == '\r') {
-                line.pop_back();
-            }
-            if (line.empty()) {
-                break;
-            }
+
+            if (!line.empty() && line.back() == '\r') line.pop_back();
+            if (line.empty()) break;
 
             if (const auto colon = line.find(':'); colon != std::string::npos) {
                 std::string header = line.substr(0, colon);
@@ -87,15 +78,14 @@ private:
         if (response_headers.contains("transfer-encoding")) {
             return std::unexpected(browser_error::unsupported_transfer_encoding);
         }
+
         if (response_headers.contains("content-encoding")) {
             return std::unexpected(browser_error::unsupported_content_encoding);
         }
 
         asio::read(stream, response_buffer, asio::transfer_all(), ec);
 
-        if (ec && ec != asio::error::eof) {
-            return std::unexpected(browser_error::network_error);
-        }
+        if (ec && ec != asio::error::eof) return std::unexpected(browser_error::network_error);
 
         return std::string{asio::buffers_begin(response_buffer.data()),
                            asio::buffers_end(response_buffer.data())};
