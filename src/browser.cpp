@@ -4,8 +4,7 @@
 #include <vector>
 
 browser::browser() : window_{sf::VideoMode({WIDTH, HEIGHT}), "Toy Browser"} {
-    // NOTE: This only works on my computer; Add this to assets.
-    if (!font_.openFromFile("/usr/share/fonts/google-noto-sans-cjk-vf-fonts/NotoSansCJK-VF.ttc")) {
+    if (!font_.openFromFile("assets/NotoSansCJK-VF.ttc")) {
         throw std::runtime_error("ERROR: No font loaded.");
     }
 }
