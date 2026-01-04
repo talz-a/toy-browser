@@ -6,7 +6,7 @@
 #include "browser/url.hpp"
 
 struct render_item {
-    float x, y;
+    float x{}, y{};
     sf::String text;
 };
 

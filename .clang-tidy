@@ -1,17 +1,12 @@
 ---
 Checks: >
   -*,
-  google-*,
   bugprone-*,
+  cppcoreguidelines-*,
+  clang-analyzer-*,
   performance-*,
-  readability-*,
   modernize-*,
-  -readability-identifier-length,
   -modernize-use-trailing-return-type,
-  -google-readability-todo,
 
 HeaderFilterRegex: "^(?!.*(third_party|build|include)).*"
 WarningsAsErrors: "*"
-
-CheckOptions:
-  readability-braces-around-statements.ShortStatementLines: 2

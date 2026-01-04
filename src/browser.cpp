@@ -1,5 +1,6 @@
 #include "browser/browser.hpp"
 #include <SFML/Graphics.hpp>
+#include <optional>
 #include <string>
 #include <vector>
 
