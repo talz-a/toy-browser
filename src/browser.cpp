@@ -34,8 +34,8 @@ void browser::layout(std::string_view text) {
     for (char32_t codepoint : unicode_text) {
         sf::String single_char(codepoint);
         display_list_.push_back({cursor_x, cursor_y, single_char});
-
-        cursor_x += HSTEP;
+        float char_width = font_.getGlyph(codepoint, FONT_SIZE, false).advance;
+        cursor_x += char_width;
         if (cursor_x >= WIDTH - HSTEP) {
             cursor_y += VSTEP;
             cursor_x = HSTEP;
