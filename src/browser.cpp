@@ -3,6 +3,7 @@
 #include <optional>
 #include <ranges>
 #include <string>
+#include <variant>
 #include <vector>
 
 browser::browser() : window_{sf::VideoMode({WIDTH, HEIGHT}), "Toy Browser"} {
@@ -11,26 +12,35 @@ browser::browser() : window_{sf::VideoMode({WIDTH, HEIGHT}), "Toy Browser"} {
     }
 }
 
-std::string browser::lex(std::string_view body) {
-    std::string text;
+std::vector<token> browser::lex(std::string_view body) {
+    std::vector<token> out;
+    std::string buffer;
     bool in_tag = false;
+
     for (char c : body) {
         if (c == '<') {
             in_tag = true;
+            if (!buffer.empty()) out.emplace_back(text_token{.text = std::move(buffer)});
+            buffer.clear();
         } else if (c == '>') {
             in_tag = false;
-        } else if (!in_tag) {
+            out.emplace_back(tag_token{.tag = std::move(buffer)});
+            buffer.clear();
+        } else {
+            // NOTE: Maybe handle the ending '/' of closing tags.
             if (c == '\n' || c == '\t') {
-                text += ' ';
+                buffer += ' ';
             } else {
-                text += c;
+                buffer += c;
             }
         }
     }
-    return text;
+
+    if (!in_tag && !buffer.empty()) out.emplace_back(text_token{.text = std::move(buffer)});
+    return out;
 }
 
-void browser::layout(std::string_view text) {
+void browser::layout(const std::vector<token>& toks) {
     display_list_.clear();
 
     float cursor_x = HSTEP;
@@ -40,28 +50,60 @@ void browser::layout(std::string_view text) {
     sf::Text space(font_, ' ', FONT_SIZE);
     const float space_width = space.getGlobalBounds().size.x;
 
-    for (const auto w : std::views::split(text, ' ')) {
-        if (w.empty()) continue;
+    auto weight = sf::Text::Style::Regular;
+    auto style = sf::Text::Style::Regular;
 
-        sf::Text word(font_, std::string(std::string_view(w)), FONT_SIZE);
-        const auto word_with = word.getGlobalBounds().size.x;
+    auto visitor = [&](auto&& arg) {
+        using T = std::decay_t<decltype(arg)>;
 
-        if (cursor_x + word_with > WIDTH - HSTEP) {
-            cursor_y += font_.getLineSpacing(FONT_SIZE) * 1.25f;
-            cursor_x = HSTEP;
+        if constexpr (std::is_same_v<T, text_token>) {
+            for (const auto w : std::views::split(arg.text, ' ')) {
+                // TODO: Check if this is the correct if check to make.
+                if (w.empty()) continue;
+
+                sf::Text word(font_, std::ranges::to<std::string>(w), FONT_SIZE);
+                const auto word_with = word.getGlobalBounds().size.x;
+
+                word.setStyle(style | weight);
+
+                if (cursor_x + word_with > WIDTH - HSTEP) {
+                    cursor_y += font_.getLineSpacing(FONT_SIZE) * 1.25f;
+                    cursor_x = HSTEP;
+                }
+
+                display_list_.push_back({cursor_x, cursor_y, word});
+
+                cursor_x += word_with + space_width;
+            }
+        } else if constexpr (std::is_same_v<T, tag_token>) {
+            // TODO: Switch on tag as enum at some point.
+            if (arg.tag == "i") {
+                style = sf::Text::Style::Italic;
+            } else if (arg.tag == "/i") {
+                style = sf::Text::Style::Regular;
+            } else if (arg.tag == "b") {
+                weight = sf::Text::Style::Bold;
+            } else if (arg.tag == "/b") {
+                weight = sf::Text::Style::Regular;
+            }
         }
+    };
 
-        display_list_.push_back({cursor_x, cursor_y, word});
-
-        cursor_x += word_with + space_width;
+    for (auto const& tok : toks) {
+        std::visit(visitor, tok);
     }
 }
 
 void browser::load(const url& target_url) {
     auto result = target_url.request();
     if (!result) return;
-    std::string raw_utf8 = lex(result.value());
-    layout(raw_utf8);
+    auto toks = lex(result.value());
+
+    // For testing...
+    // std::string test_html = "Normal <b>Bold</b> <i>Italic</i> <b><i>BoldItalic</i></b>";
+    // auto toks = lex(test_html);
+
+    layout(toks);
     run();
 }
 

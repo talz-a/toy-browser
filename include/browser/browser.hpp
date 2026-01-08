@@ -7,9 +7,18 @@
 
 struct render_item {
     float x{}, y{};
-    // std::string_view text;
     sf::Text text;
 };
+
+struct text_token {
+    std::string text;
+};
+
+struct tag_token {
+    std::string tag;
+};
+
+using token = std::variant<text_token, tag_token>;
 
 class browser {
 public:
@@ -28,8 +37,8 @@ private:
     static constexpr float SCROLL_STEP = 100;
     static constexpr int FONT_SIZE = 16;
 
-    [[nodiscard]] static std::string lex(std::string_view body);
-    void layout(std::string_view text);
+    [[nodiscard]] static std::vector<token> lex(std::string_view body);
+    void layout(const std::vector<token>& toks);
     void process_events();
     void render();
 
