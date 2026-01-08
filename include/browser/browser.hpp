@@ -7,7 +7,8 @@
 
 struct render_item {
     float x{}, y{};
-    sf::String text;
+    // std::string_view text;
+    sf::Text text;
 };
 
 class browser {

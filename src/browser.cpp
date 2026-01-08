@@ -1,6 +1,7 @@
 #include "browser/browser.hpp"
 #include <SFML/Graphics.hpp>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <vector>
 
@@ -19,7 +20,11 @@ std::string browser::lex(std::string_view body) {
         } else if (c == '>') {
             in_tag = false;
         } else if (!in_tag) {
-            text += c;
+            if (c == '\n' || c == '\t') {
+                text += ' ';
+            } else {
+                text += c;
+            }
         }
     }
     return text;
@@ -27,19 +32,28 @@ std::string browser::lex(std::string_view body) {
 
 void browser::layout(std::string_view text) {
     display_list_.clear();
-    sf::String unicode_text = sf::String::fromUtf8(text.begin(), text.end());
 
     float cursor_x = HSTEP;
     float cursor_y = VSTEP;
-    for (char32_t codepoint : unicode_text) {
-        sf::String single_char(codepoint);
-        display_list_.push_back({cursor_x, cursor_y, single_char});
-        float char_width = font_.getGlyph(codepoint, FONT_SIZE, false).advance;
-        cursor_x += char_width;
-        if (cursor_x >= WIDTH - HSTEP) {
-            cursor_y += VSTEP;
+
+    // TODO: This should probably be moved to constant.
+    sf::Text space(font_, ' ', FONT_SIZE);
+    const float space_width = space.getGlobalBounds().size.x;
+
+    for (const auto w : std::views::split(text, ' ')) {
+        if (w.empty()) continue;
+
+        sf::Text word(font_, std::string(std::string_view(w)), FONT_SIZE);
+        const auto word_with = word.getGlobalBounds().size.x;
+
+        if (cursor_x + word_with > WIDTH - HSTEP) {
+            cursor_y += font_.getLineSpacing(FONT_SIZE) * 1.25f;
             cursor_x = HSTEP;
         }
+
+        display_list_.push_back({cursor_x, cursor_y, word});
+
+        cursor_x += word_with + space_width;
     }
 }
 
@@ -68,13 +82,12 @@ void browser::process_events() {
 void browser::render() {
     window_.clear(sf::Color::White);
 
-    for (const auto& [x, y, c] : display_list_) {
+    for (auto& [x, y, word] : display_list_) {
         if (y > scroll_ + HEIGHT) continue;
         if (y + VSTEP < scroll_) continue;
-        sf::Text label(font_, c, FONT_SIZE);
-        label.setPosition({x, y - scroll_});
-        label.setFillColor(sf::Color::Black);
-        window_.draw(label);
+        word.setPosition({x, y - scroll_});
+        word.setFillColor(sf::Color::Black);
+        window_.draw(word);
     }
 
     window_.display();
