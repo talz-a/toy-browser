@@ -2,23 +2,8 @@
 
 #include <SFML/Graphics.hpp>
 #include <string_view>
-#include <vector>
+#include "browser/layout.hpp"
 #include "browser/url.hpp"
-
-struct render_item {
-    float x{}, y{};
-    sf::Text text;
-};
-
-struct text_token {
-    std::string text;
-};
-
-struct tag_token {
-    std::string tag;
-};
-
-using token = std::variant<text_token, tag_token>;
 
 class browser {
 public:
@@ -32,13 +17,9 @@ public:
     void run();
 
 private:
-    static constexpr float HSTEP = 13;
-    static constexpr float VSTEP = 18;
     static constexpr float SCROLL_STEP = 100;
-    static constexpr int FONT_SIZE = 16;
 
     [[nodiscard]] static std::vector<token> lex(std::string_view body);
-    void layout(const std::vector<token>& toks);
     void process_events();
     void render();
 

@@ -9,5 +9,5 @@ Checks: >
   -modernize-use-trailing-return-type,
   -cppcoreguidelines-avoid-magic-numbers
 
-HeaderFilterRegex: "^(?!.*(third_party|build|include)).*"
+HeaderFilterRegex: 'src/.*|include/.*'
 WarningsAsErrors: "*"
