@@ -27,13 +27,13 @@ void layout::process_token(const token& tok) {
                 } else if (arg.tag == "/b") {
                     weight_ = sf::Text::Style::Regular;
                 } else if (arg.tag == "small") {
-                    size_ -= 2;
+                    size_ -= constants::font_size_small_diff;
                 } else if (arg.tag == "/small") {
-                    size_ += 2;
+                    size_ += constants::font_size_small_diff;
                 } else if (arg.tag == "big") {
-                    size_ += 4;
+                    size_ += constants::font_size_big_diff;
                 } else if (arg.tag == "/big") {
-                    size_ -= 4;
+                    size_ -= constants::font_size_big_diff;
                 }
             }
         },
@@ -48,9 +48,9 @@ void layout::word(const std::string& word_text) {
     sf::Text space_sf(*font_, " ", size_);
     const float space_width = space_sf.getGlobalBounds().size.x;
 
-    if (cursor_x_ + word_width > WIDTH - HSTEP) {
-        cursor_y_ += font_->getLineSpacing(size_) * 1.25f;
-        cursor_x_ = HSTEP;
+    if (cursor_x_ + word_width > constants::width - constants::h_step) {
+        cursor_y_ += font_->getLineSpacing(size_) * constants::line_height_multiplier;
+        cursor_x_ = constants::h_step;
     }
 
     display_list_.push_back({cursor_x_, cursor_y_, std::move(word_sf)});

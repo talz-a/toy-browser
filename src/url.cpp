@@ -11,9 +11,9 @@ url::url(std::string_view url_string) {
     const std::string_view rest = url_string.substr(scheme_sep + 3);
 
     if (scheme_ == "http") {
-        port_ = HTTP_PORT;
+        port_ = http_port_;
     } else if (scheme_ == "https") {
-        port_ = HTTPS_PORT;
+        port_ = https_port_;
     } else {
         throw std::runtime_error("ERROR: Only scheme http and https are supported.");
     }
@@ -33,14 +33,11 @@ url::url(std::string_view url_string) {
     }
 }
 
-[[nodiscard]] std::expected<std::string, browser_error> url::request() const {
+[[nodiscard]] std::string url::request() const {
     asio::io_context io_context;
-    asio::error_code ec;
 
     asio::ip::tcp::resolver resolver(io_context);
-    const auto endpoints = resolver.resolve(host_, std::to_string(port_), ec);
-
-    if (ec) return std::unexpected(browser_error::network_error);
+    const auto endpoints = resolver.resolve(host_, std::to_string(port_));
 
     std::string request_text = std::format("GET {} HTTP/1.0\r\n", path_);
     request_text += std::format("Host: {}\r\n", host_);
@@ -48,29 +45,19 @@ url::url(std::string_view url_string) {
 
     if (scheme_ == "https") {
         asio::ssl::context ctx(asio::ssl::context::sslv23);
-
-        std::ignore = ctx.set_default_verify_paths(ec);
-        if (ec) return std::unexpected(browser_error::ssl_error);
-
+        ctx.set_default_verify_paths();
         asio::ssl::stream<asio::ip::tcp::socket> stream(io_context, ctx);
 
         if (!SSL_set_tlsext_host_name(stream.native_handle(), host_.c_str())) {
-            return std::unexpected(browser_error::ssl_error);
+            throw std::runtime_error("ERROR: SSL setup failed");
         }
 
-        asio::connect(stream.lowest_layer(), endpoints, ec);
-        if (ec) return std::unexpected(browser_error::network_error);
-
-        std::ignore = stream.handshake(asio::ssl::stream_base::client, ec);
-        if (ec) return std::unexpected(browser_error::ssl_error);
-
+        asio::connect(stream.lowest_layer(), endpoints);
+        stream.handshake(asio::ssl::stream_base::client);
         return send_request(stream, request_text);
     }
 
     asio::ip::tcp::socket socket(io_context);
-
-    asio::connect(socket, endpoints, ec);
-    if (ec) return std::unexpected(browser_error::network_error);
-
+    asio::connect(socket, endpoints);
     return send_request(socket, request_text);
 }

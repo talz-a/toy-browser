@@ -19,6 +19,7 @@ add_executable(toy-browser
     src/url.cpp
     src/browser.cpp
     src/layout.cpp
+    src/html.cpp
 )
 
 target_include_directories(toy-browser PRIVATE include)

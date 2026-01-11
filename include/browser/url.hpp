@@ -2,23 +2,14 @@
 
 #include <asio.hpp>
 #include <asio/ssl.hpp>
-#include <expected>
 #include <map>
 #include <string_view>
-
-enum class browser_error : std::uint8_t {
-    network_error,
-    unsupported_transfer_encoding,
-    unsupported_content_encoding,
-    invalid_response,
-    ssl_error
-};
 
 class url {
 public:
     explicit url(std::string_view url_string);
 
-    [[nodiscard]] std::expected<std::string, browser_error> request() const;
+    [[nodiscard]] std::string request() const;
 
 private:
     std::string scheme_;
@@ -26,20 +17,15 @@ private:
     std::string path_;
     int port_;
 
-    static constexpr unsigned int HTTP_PORT = 80;
-    static constexpr unsigned int HTTPS_PORT = 443;
+    static constexpr unsigned int http_port_ = 80;
+    static constexpr unsigned int https_port_ = 443;
 
     template <typename Stream>
-    std::expected<std::string, browser_error> send_request(Stream& stream,
-                                                           const std::string& request_text) const {
-        asio::error_code ec;
-
-        asio::write(stream, asio::buffer(request_text), ec);
-        if (ec) return std::unexpected(browser_error::network_error);
+    std::string send_request(Stream& stream, const std::string& request_text) const {
+        asio::write(stream, asio::buffer(request_text));
 
         asio::streambuf response_buffer;
-        asio::read_until(stream, response_buffer, "\r\n", ec);
-        if (ec) return std::unexpected(browser_error::network_error);
+        asio::read_until(stream, response_buffer, "\r\n");
 
         std::istream response_stream(&response_buffer);
         std::string status_line;
@@ -76,16 +62,19 @@ private:
         }
 
         if (response_headers.contains("transfer-encoding")) {
-            return std::unexpected(browser_error::unsupported_transfer_encoding);
+            throw std::runtime_error("ERROR: Transfer-Encoding is not supported.");
         }
 
         if (response_headers.contains("content-encoding")) {
-            return std::unexpected(browser_error::unsupported_content_encoding);
+            throw std::runtime_error("ERROR: Content-Encoding is not supported.");
         }
 
+        asio::error_code ec;
         asio::read(stream, response_buffer, asio::transfer_all(), ec);
 
-        if (ec && ec != asio::error::eof) return std::unexpected(browser_error::network_error);
+        if (ec && ec != asio::error::eof) {
+            throw std::system_error(ec);
+        }
 
         return std::string{asio::buffers_begin(response_buffer.data()),
                            asio::buffers_end(response_buffer.data())};
