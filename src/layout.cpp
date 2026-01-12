@@ -61,7 +61,7 @@ void layout::process_token(const token& tok) {
 }
 
 void layout::word(const std::string& word_text) {
-    sf::Text word_sf(*font_, word_text, size_);
+    sf::Text word_sf(*font_, sf::String::fromUtf8(word_text.begin(), word_text.end()), size_);
     word_sf.setStyle(style_ | weight_);
     const auto word_width = word_sf.getGlobalBounds().size.x;
 
