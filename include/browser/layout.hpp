@@ -11,13 +11,25 @@ struct render_item {
     sf::Text text;
 };
 
+struct line_item {
+    float x{};
+    sf::Text text;
+};
+
 class layout {
 public:
     layout(const std::vector<token>& tokens, const sf::Font& font);
 
     [[nodiscard]] const std::vector<render_item>& get_display_list() const { return display_list_; }
 
+    void flush();
+
 private:
+    [[nodiscard]] float get_ascent(const sf::Font& font, unsigned int size);
+
+    [[nodiscard]] float get_descent(const sf::Font& font, unsigned int size);
+
+    std::vector<line_item> line_;
     std::vector<render_item> display_list_;
     float cursor_x_ = constants::h_step;
     float cursor_y_ = constants::v_step;

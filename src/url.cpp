@@ -41,6 +41,7 @@ url::url(std::string_view url_string) {
 
     std::string request_text = std::format("GET {} HTTP/1.0\r\n", path_);
     request_text += std::format("Host: {}\r\n", host_);
+    request_text += "User-Agent: toy-browser\r\n";
     request_text += "Connection: close\r\n\r\n";
 
     if (scheme_ == "https") {
