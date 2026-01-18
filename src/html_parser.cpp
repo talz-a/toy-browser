@@ -65,6 +65,8 @@ std::pair<std::string, std::unordered_map<std::string, std::string>> html_parser
 void html_parser::add_text(std::string_view text) {
     if (text == " ") return;
 
+    implicit_tags();
+
     if (unfinished_.empty()) return;
 
     const auto& parent = unfinished_.back();
@@ -77,9 +79,11 @@ void html_parser::add_text(std::string_view text) {
 }
 
 void html_parser::add_tag(std::string_view raw_tag) {
-    if (raw_tag.starts_with('!')) return;
-
     auto [tag, attributes] = get_attributes(raw_tag);
+
+    if (tag.starts_with('!')) return;
+
+    implicit_tags(tag);
 
     if (tag.starts_with('/')) {
         if (unfinished_.size() == 1) return;
@@ -109,8 +113,47 @@ void html_parser::add_tag(std::string_view raw_tag) {
     }
 }
 
+void html_parser::implicit_tags(std::optional<std::string_view> tag) {
+    while (true) {
+        auto open_tags = unfinished_ | std::views::filter([](const auto& node) {
+                             return std::holds_alternative<element_data>(node->data);
+                         }) |
+                         std::views::transform([](const auto& node) -> std::string_view {
+                             return std::get<element_data>(node->data).tag;
+                         }) |
+                         std::ranges::to<std::vector<std::string_view>>();
+
+        // 1. If empty and first tag isn't <html>, add <html>.
+        if (open_tags.empty() && tag != "html") {
+            add_tag("html");
+        }
+
+        // 2. If we only have <html>, decide between <head> and <body>.
+        else if (open_tags.size() == 1 && open_tags[0] == "html" && tag != "head" &&
+                 tag != "body" && tag != "/html") {
+            if (tag.has_value() && std::ranges::contains(head_tags_, *tag)) {
+                add_tag("head");
+            } else {
+                add_tag("body");
+            }
+        }
+
+        // 3. If in <head> and a body-tag arrives, close the <head>.
+        else if (open_tags.size() == 2 && open_tags[0] == "html" && open_tags[1] == "head" &&
+                 tag != "/head" && (tag.has_value() && !std::ranges::contains(head_tags_, *tag))) {
+            add_tag("/head");
+        }
+
+        else {
+            break;
+        }
+    }
+}
+
 std::shared_ptr<node> html_parser::finish() {
     if (unfinished_.empty()) return nullptr;
+
+    implicit_tags();
 
     while (unfinished_.size() > 1) {
         const auto node = unfinished_.back();
