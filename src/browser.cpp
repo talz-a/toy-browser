@@ -14,8 +14,7 @@ browser::browser()
 void browser::load(const url& target_url) {
     auto toks = lex(target_url.request());
 
-    // For testing...
-    // std::string test_html =
+    // For testing... std::string test_html =
     //     "Normal <big>Big</big> Normal <small>Small</small> <b>Bold <big>BigBold</big></b>";
     // auto toks = lex(test_html);
 

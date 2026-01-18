@@ -17,8 +17,8 @@ find_package(SFML CONFIG REQUIRED COMPONENTS Graphics Window System)
 add_executable(toy-browser 
     src/main.cpp 
     src/url.cpp
-    src/browser.cpp
-    src/layout.cpp
+    # src/browser.cpp
+    # src/layout.cpp
     src/html.cpp
 )
 

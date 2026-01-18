@@ -33,7 +33,7 @@ url::url(std::string_view url_string) {
     }
 }
 
-[[nodiscard]] std::string url::request() const {
+std::string url::request() const {
     asio::io_context io_context;
 
     asio::ip::tcp::resolver resolver(io_context);

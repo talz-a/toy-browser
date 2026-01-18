@@ -57,7 +57,8 @@ void layout::process_token(const token& tok) {
                 }
             }
         },
-        tok);
+        tok
+    );
 }
 
 void layout::word(const std::string& word_text) {

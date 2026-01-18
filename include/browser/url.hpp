@@ -2,7 +2,6 @@
 
 #include <asio.hpp>
 #include <asio/ssl.hpp>
-#include <map>
 #include <string_view>
 
 class url {
@@ -32,7 +31,7 @@ private:
         std::getline(response_stream, status_line);
         if (!status_line.empty() && status_line.back() == '\r') status_line.pop_back();
 
-        std::map<std::string, std::string> response_headers;
+        std::unordered_map<std::string, std::string> response_headers;
         while (true) {
             std::string line;
             std::getline(response_stream, line);
@@ -44,8 +43,9 @@ private:
                 std::string header = line.substr(0, colon);
                 std::string raw_value = line.substr(colon + 1);
 
-                std::ranges::transform(
-                    header, header.begin(), [](unsigned char c) { return std::tolower(c); });
+                std::ranges::transform(header, header.begin(), [](unsigned char c) {
+                    return std::tolower(c);
+                });
 
                 std::string_view sv = raw_value;
 
@@ -72,11 +72,10 @@ private:
         asio::error_code ec;
         asio::read(stream, response_buffer, asio::transfer_all(), ec);
 
-        if (ec && ec != asio::error::eof) {
-            throw std::system_error(ec);
-        }
+        if (ec && ec != asio::error::eof) throw std::system_error(ec);
 
-        return std::string{asio::buffers_begin(response_buffer.data()),
-                           asio::buffers_end(response_buffer.data())};
+        return std::string{
+            asio::buffers_begin(response_buffer.data()), asio::buffers_end(response_buffer.data())
+        };
     }
 };
