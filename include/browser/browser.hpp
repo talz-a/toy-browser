@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
+#include "browser/html_parser.hpp"
 #include "browser/layout.hpp"
 #include "browser/url.hpp"
 
@@ -21,4 +22,5 @@ private:
     sf::RenderWindow window_;
     sf::Font font_;
     std::vector<render_item> display_list_;
+    std::shared_ptr<node> nodes_;
 };

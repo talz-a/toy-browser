@@ -1,10 +1,11 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
+#include <memory>
 #include <string>
 #include <vector>
 #include "browser/constants.hpp"
-#include "browser/html.hpp"
+#include "browser/html_parser.hpp"
 
 struct render_item {
     float x{}, y{};
@@ -18,7 +19,7 @@ struct line_item {
 
 class layout {
 public:
-    layout(const std::vector<token>& tokens, const sf::Font& font);
+    layout(const std::shared_ptr<node>& node, sf::Font& font);
 
     [[nodiscard]] const std::vector<render_item>& get_display_list() const { return display_list_; }
 
@@ -40,6 +41,10 @@ private:
     // TODO: Change this.
     const sf::Font* font_;
 
-    void process_token(const token& tok);
+    void recurse(const std::shared_ptr<node>& node);
+
+    void open_tag(const element_data& element);
+    void close_tag(const element_data& element);
+
     void word(const std::string& word);
 };

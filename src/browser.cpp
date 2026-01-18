@@ -1,8 +1,30 @@
 #include "browser/browser.hpp"
 #include <SFML/Graphics.hpp>
 #include <optional>
+#include <print>
 #include <vector>
-#include "browser/html.hpp"
+#include "browser/html_parser.hpp"
+
+void print_tree(const std::shared_ptr<node>& n, int indent = 0) {
+    if (!n) return;
+
+    std::visit(
+        [&](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+            std::print("{:>{}}", "", indent);
+            if constexpr (std::is_same_v<T, text_data>) {
+                std::println("{}", arg.text);
+            } else if constexpr (std::is_same_v<T, element_data>) {
+                std::println("<{}>", arg.tag);
+            }
+        },
+        n->data
+    );
+
+    for (const auto& child : n->children) {
+        print_tree(child, indent + 2);
+    }
+}
 
 browser::browser()
     : window_{sf::VideoMode({constants::width, constants::height}), constants::window_title} {
@@ -12,13 +34,10 @@ browser::browser()
 }
 
 void browser::load(const url& target_url) {
-    auto toks = lex(target_url.request());
-
-    // For testing... std::string test_html =
-    //     "Normal <big>Big</big> Normal <small>Small</small> <b>Bold <big>BigBold</big></b>";
-    // auto toks = lex(test_html);
-
-    display_list_ = layout(toks, font_).get_display_list();
+    auto body = target_url.request();
+    nodes_ = html_parser(body).parse();
+    print_tree(nodes_);
+    display_list_ = layout(nodes_, font_).get_display_list();
     run();
 }
 

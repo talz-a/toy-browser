@@ -1,6 +1,9 @@
 #include "browser/layout.hpp"
+#include <fcntl.h>
+#include <memory>
 #include <ranges>
 #include "browser/constants.hpp"
+#include "browser/html_parser.hpp"
 
 // HACK: No way to get ascent of a word...
 float layout::get_ascent(const sf::Font& font, unsigned int size) {
@@ -16,49 +19,61 @@ float layout::get_descent(const sf::Font& font, unsigned int size) {
     return glyph.bounds.size.y + glyph.bounds.position.y;
 }
 
-layout::layout(const std::vector<token>& tokens, const sf::Font& font) : font_(&font) {
-    for (const auto& tok : tokens) {
-        process_token(tok);
-    }
+layout::layout(const std::shared_ptr<node>& node, sf::Font& font) : font_(&font) {
+    recurse(node);
     flush();
 }
 
-void layout::process_token(const token& tok) {
+void layout::recurse(const std::shared_ptr<node>& node) {
     std::visit(
         [&](auto&& arg) {
             using T = std::decay_t<decltype(arg)>;
-            if constexpr (std::is_same_v<T, text_token>) {
+            if constexpr (std::is_same_v<T, text_data>) {
                 for (const auto w : std::views::split(arg.text, ' ')) {
                     if (w.empty()) continue;
                     word(std::ranges::to<std::string>(w));
                 }
-            } else if constexpr (std::is_same_v<T, tag_token>) {
-                if (arg.tag == "i") {
-                    style_ = sf::Text::Style::Italic;
-                } else if (arg.tag == "/i") {
-                    style_ = sf::Text::Style::Regular;
-                } else if (arg.tag == "b") {
-                    weight_ = sf::Text::Style::Bold;
-                } else if (arg.tag == "/b") {
-                    weight_ = sf::Text::Style::Regular;
-                } else if (arg.tag == "small") {
-                    size_ -= constants::font_size_small_diff;
-                } else if (arg.tag == "/small") {
-                    size_ += constants::font_size_small_diff;
-                } else if (arg.tag == "big") {
-                    size_ += constants::font_size_big_diff;
-                } else if (arg.tag == "/big") {
-                    size_ -= constants::font_size_big_diff;
-                } else if (arg.tag == "br") {
-                    flush();
-                } else if (arg.tag == "/p") {
-                    flush();
-                    cursor_y_ += constants::v_step;
+            } else if constexpr (std::is_same_v<T, element_data>) {
+                open_tag(arg);
+                for (const auto& child : node->children) {
+                    recurse(child);
                 }
+                close_tag(arg);
             }
         },
-        tok
+        node->data
     );
+}
+
+// Is there some way to enforce that tag.data will be element_data or should I just pass in
+// element_data?
+void layout::open_tag(const element_data& element) {
+    if (element.tag == "i") {
+        style_ = sf::Text::Style::Italic;
+    } else if (element.tag == "b") {
+        weight_ = sf::Text::Style::Bold;
+    } else if (element.tag == "small") {
+        size_ -= constants::font_size_small_diff;
+    } else if (element.tag == "big") {
+        size_ += constants::font_size_big_diff;
+    } else if (element.tag == "br") {
+        flush();
+    }
+}
+
+void layout::close_tag(const element_data& element) {
+    if (element.tag == "i") {
+        style_ = sf::Text::Style::Regular;
+    } else if (element.tag == "b") {
+        weight_ = sf::Text::Style::Regular;
+    } else if (element.tag == "small") {
+        size_ += constants::font_size_small_diff;
+    } else if (element.tag == "big") {
+        size_ -= constants::font_size_big_diff;
+    } else if (element.tag == "p") {
+        flush();
+        cursor_y_ += constants::v_step;
+    }
 }
 
 void layout::word(const std::string& word_text) {
