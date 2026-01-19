@@ -86,7 +86,7 @@ void layout::word(const std::string& word_text) {
     word_sf.setStyle(style_ | weight_);
     const auto word_width = word_sf.getGlobalBounds().size.x;
 
-    // TODO: Maybe cache so we are not calculating space_width more than once?
+    // Maybe cache so we are not calculating space_width more than once?
     const sf::Text space_sf(*font_, " ", size_);
     const float space_width = space_sf.getGlobalBounds().size.x;
 

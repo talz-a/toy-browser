@@ -12,14 +12,6 @@ public:
     [[nodiscard]] std::string request() const;
 
 private:
-    std::string scheme_;
-    std::string host_;
-    std::string path_;
-    int port_;
-
-    static constexpr unsigned int http_port_ = 80;
-    static constexpr unsigned int https_port_ = 443;
-
     template <typename Stream>
     std::string send_request(Stream& stream, const std::string& request_text) const {
         asio::write(stream, asio::buffer(request_text));
@@ -74,4 +66,11 @@ private:
             asio::buffers_begin(response_buffer.data()), asio::buffers_end(response_buffer.data())
         };
     }
+
+    static constexpr unsigned int http_port_ = 80;
+    static constexpr unsigned int https_port_ = 443;
+    std::string scheme_;
+    std::string host_;
+    std::string path_;
+    int port_;
 };
