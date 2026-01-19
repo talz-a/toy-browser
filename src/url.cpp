@@ -1,7 +1,6 @@
 #include "browser/url.hpp"
 #include <openssl/ssl.h>
 #include <format>
-#include <stdexcept>
 
 url::url(std::string_view url_string) {
     const auto scheme_sep = url_string.find("://");

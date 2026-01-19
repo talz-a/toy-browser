@@ -3,6 +3,7 @@
 #include <asio.hpp>
 #include <asio/ssl.hpp>
 #include <string_view>
+#include "browser/utils.hpp"
 
 class url {
 public:
@@ -40,15 +41,10 @@ private:
             if (line.empty()) break;
 
             if (const auto colon = line.find(':'); colon != std::string::npos) {
-                std::string header = line.substr(0, colon);
+                std::string header = to_lower(line.substr(0, colon));
                 std::string raw_value = line.substr(colon + 1);
 
-                std::ranges::transform(header, header.begin(), [](unsigned char c) {
-                    return std::tolower(c);
-                });
-
                 std::string_view sv = raw_value;
-
                 while (!sv.empty() && std::isspace(static_cast<unsigned char>(sv.front()))) {
                     sv.remove_prefix(1);
                 }
