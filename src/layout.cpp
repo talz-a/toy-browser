@@ -1,18 +1,19 @@
 #include "browser/layout.hpp"
 #include <fcntl.h>
+#include <algorithm>
 #include <memory>
 #include <ranges>
 #include "browser/constants.hpp"
 #include "browser/html_parser.hpp"
 
-// HACK: No way to get ascent of a word...
+// HACK: No native way to get ascent of a word as of right now...
 float layout::get_ascent(const sf::Font& font, unsigned int size) {
     if (size == 0) return 0.f;
     float top = font.getGlyph(U'\u00CA', size, false, 0).bounds.position.y;
     return -top;
 }
 
-// Hack: No way to get descent of a word...
+// HACK: No native way to get descent of a word as of right now...
 float layout::get_descent(const sf::Font& font, unsigned int size) {
     if (size == 0) return 0.f;
     auto glyph = font.getGlyph('p', size, false);
@@ -29,10 +30,16 @@ void layout::recurse(const std::shared_ptr<node>& node) {
         [&](auto&& arg) {
             using T = std::decay_t<decltype(arg)>;
             if constexpr (std::is_same_v<T, text_data>) {
-                for (const auto w : std::views::split(arg.text, ' ')) {
+                // NOTE: We should be spliting on \n's and \t's like python does, but since C++
+                // split does not, we need to normalize it here.
+                std::string text = arg.text;
+                std::ranges::replace_if(text, [](unsigned char c) { return std::isspace(c); }, ' ');
+
+                for (const auto w : std::views::split(text, ' ')) {
                     if (w.empty()) continue;
                     word(std::ranges::to<std::string>(w));
                 }
+
             } else if constexpr (std::is_same_v<T, element_data>) {
                 open_tag(arg);
                 for (const auto& child : node->children) {
@@ -45,8 +52,6 @@ void layout::recurse(const std::shared_ptr<node>& node) {
     );
 }
 
-// Is there some way to enforce that tag.data will be element_data or should I just pass in
-// element_data?
 void layout::open_tag(const element_data& element) {
     if (element.tag == "i") {
         style_ = sf::Text::Style::Italic;
@@ -84,9 +89,7 @@ void layout::word(const std::string& word_text) {
     sf::Text space_sf(*font_, " ", size_);
     const float space_width = space_sf.getGlobalBounds().size.x;
 
-    if (cursor_x_ + word_width > constants::width - constants::h_step) {
-        flush();
-    }
+    if (cursor_x_ + word_width > constants::width - constants::h_step) flush();
 
     line_.push_back({cursor_x_, std::move(word_sf)});
 
