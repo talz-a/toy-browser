@@ -24,6 +24,7 @@ struct node {
     // Text nodes don't have children but is here for simplificaiton.
     std::vector<std::shared_ptr<node>> children;
 
+    // This is a weak_ptr to avoid a refernce cycle.
     std::weak_ptr<node> parent;
 };
 
@@ -34,6 +35,16 @@ public:
     [[nodiscard]] std::shared_ptr<node> parse();
 
 private:
+    void add_text(std::string_view text);
+    void add_tag(std::string_view raw_tag);
+
+    [[nodiscard]] static std::pair<std::string, std::unordered_map<std::string, std::string>>
+    get_attributes(std::string_view text);
+
+    void implicit_tags(std::optional<std::string_view> tag = std::nullopt);
+
+    [[nodiscard]] std::shared_ptr<node> finish();
+
     static constexpr auto self_closing_tags_ = std::to_array(
         {"area",
          "base",
@@ -50,7 +61,6 @@ private:
          "track",
          "wbr"}
     );
-
     static constexpr auto head_tags_ = std::to_array({
         "base",
         "basefont",
@@ -62,16 +72,6 @@ private:
         "style",
         "script",
     });
-
     std::string_view body_;
     std::vector<std::shared_ptr<node>> unfinished_;
-
-    [[nodiscard]] static std::pair<std::string, std::unordered_map<std::string, std::string>>
-    get_attributes(std::string_view text);
-
-    void add_text(std::string_view text);
-    void add_tag(std::string_view raw_tag);
-    void implicit_tags(std::optional<std::string_view> tag = std::nullopt);
-
-    [[nodiscard]] std::shared_ptr<node> finish();
 };

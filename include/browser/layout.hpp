@@ -19,11 +19,13 @@ struct line_item {
 
 class layout {
 public:
-    layout(const std::shared_ptr<node>& node, sf::Font& font);
+    layout(const std::shared_ptr<node>& node, sf::Font& font, float width);
 
     [[nodiscard]] const std::vector<render_item>& get_display_list() const { return display_list_; }
 
     void flush();
+
+    [[nodiscard]] float get_height() const { return cursor_y_; }
 
 private:
     [[nodiscard]] float get_ascent(const sf::Font& font, unsigned int size);
@@ -37,6 +39,7 @@ private:
     int weight_ = sf::Text::Style::Regular;
     int style_ = sf::Text::Style::Regular;
     int size_ = constants::font_size;
+    float width_;
 
     // TODO: Change this.
     const sf::Font* font_;

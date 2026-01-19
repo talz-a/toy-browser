@@ -28,40 +28,6 @@ std::shared_ptr<node> html_parser::parse() {
     return finish();
 }
 
-std::pair<std::string, std::unordered_map<std::string, std::string>> html_parser::get_attributes(
-    std::string_view text
-) {
-    const auto parts = text | std::views::split(' ') | std::ranges::to<std::vector<std::string>>();
-
-    if (parts.empty()) return {"", {}};
-
-    const auto tag = to_lower(parts[0]);
-
-    std::unordered_map<std::string, std::string> attributes;
-    for (const auto& attrpair : parts | std::views::drop(1)) {
-        if (attrpair.contains('=')) {
-            const auto pos = attrpair.find('=');
-            const auto key = attrpair.substr(0, pos);
-            auto value = attrpair.substr(pos + 1);
-
-            if (value.size() > 2) {
-                char first = value.front();
-                char last = value.back();
-
-                if ((first == '"' || first == '\'') && first == last) {
-                    value = value.substr(1, value.size() - 2);
-                }
-            }
-
-            attributes.emplace(to_lower(key), value);
-        } else {
-            attributes.emplace(to_lower(attrpair), "");
-        }
-    }
-
-    return {tag, attributes};
-}
-
 void html_parser::add_text(std::string_view text) {
     if (text == " ") return;
 
@@ -113,15 +79,49 @@ void html_parser::add_tag(std::string_view raw_tag) {
     }
 }
 
+std::pair<std::string, std::unordered_map<std::string, std::string>> html_parser::get_attributes(
+    std::string_view text
+) {
+    const auto parts = text | std::views::split(' ') | std::ranges::to<std::vector<std::string>>();
+
+    if (parts.empty()) return {"", {}};
+
+    const auto tag = to_lower(parts[0]);
+
+    std::unordered_map<std::string, std::string> attributes;
+    for (const auto& attrpair : parts | std::views::drop(1)) {
+        if (attrpair.contains('=')) {
+            const auto pos = attrpair.find('=');
+            const auto key = attrpair.substr(0, pos);
+            auto value = attrpair.substr(pos + 1);
+
+            if (value.size() > 2) {
+                char first = value.front();
+                char last = value.back();
+
+                if ((first == '"' || first == '\'') && first == last) {
+                    value = value.substr(1, value.size() - 2);
+                }
+            }
+
+            attributes.emplace(to_lower(key), value);
+        } else {
+            attributes.emplace(to_lower(attrpair), "");
+        }
+    }
+
+    return {tag, attributes};
+}
+
 void html_parser::implicit_tags(std::optional<std::string_view> tag) {
     while (true) {
-        auto open_tags = unfinished_ | std::views::filter([](const auto& node) {
-                             return std::holds_alternative<element_data>(node->data);
-                         }) |
-                         std::views::transform([](const auto& node) -> std::string_view {
-                             return std::get<element_data>(node->data).tag;
-                         }) |
-                         std::ranges::to<std::vector<std::string_view>>();
+        const auto open_tags = unfinished_ | std::views::filter([](const auto& node) {
+                                   return std::holds_alternative<element_data>(node->data);
+                               }) |
+                               std::views::transform([](const auto& node) -> std::string_view {
+                                   return std::get<element_data>(node->data).tag;
+                               }) |
+                               std::ranges::to<std::vector<std::string_view>>();
 
         // 1. If empty and first tag isn't <html>, add <html>.
         if (open_tags.empty() && tag != "html") {

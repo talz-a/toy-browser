@@ -10,15 +10,13 @@ public:
     browser();
 
     void load(const url& target_url);
-
     void run();
 
 private:
     void process_events();
     void render();
 
-    float scroll_ = 0;
-
+    float scroll_ = 0.0f;
     sf::RenderWindow window_;
     sf::Font font_;
     std::vector<render_item> display_list_;

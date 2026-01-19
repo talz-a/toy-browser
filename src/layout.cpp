@@ -1,26 +1,26 @@
 #include "browser/layout.hpp"
-#include <fcntl.h>
 #include <algorithm>
 #include <memory>
 #include <ranges>
 #include "browser/constants.hpp"
 #include "browser/html_parser.hpp"
 
-// HACK: No native way to get ascent of a word as of right now...
+// No native way to get ascent of a word as of right now...
 float layout::get_ascent(const sf::Font& font, unsigned int size) {
     if (size == 0) return 0.f;
     float top = font.getGlyph(U'\u00CA', size, false, 0).bounds.position.y;
     return -top;
 }
 
-// HACK: No native way to get descent of a word as of right now...
+// No native way to get descent of a word as of right now...
 float layout::get_descent(const sf::Font& font, unsigned int size) {
     if (size == 0) return 0.f;
     auto glyph = font.getGlyph('p', size, false);
     return glyph.bounds.size.y + glyph.bounds.position.y;
 }
 
-layout::layout(const std::shared_ptr<node>& node, sf::Font& font) : font_(&font) {
+layout::layout(const std::shared_ptr<node>& node, sf::Font& font, float width)
+    : width_(width), font_(&font) {
     recurse(node);
     flush();
 }
@@ -89,7 +89,7 @@ void layout::word(const std::string& word_text) {
     sf::Text space_sf(*font_, " ", size_);
     const float space_width = space_sf.getGlobalBounds().size.x;
 
-    if (cursor_x_ + word_width > constants::width - constants::h_step) flush();
+    if (cursor_x_ + word_width > width_ - constants::h_step) flush();
 
     line_.push_back({cursor_x_, std::move(word_sf)});
 
