@@ -8,14 +8,18 @@
 void print_tree(const std::shared_ptr<node>& n, int indent = 0) {
     if (!n) return;
 
+    std::string_view current_tag;
+
     std::visit(
         [&](auto&& arg) {
             using T = std::decay_t<decltype(arg)>;
             std::print("{:>{}}", "", indent);
+
             if constexpr (std::is_same_v<T, text_data>) {
                 std::println("{}", arg.text);
             } else if constexpr (std::is_same_v<T, element_data>) {
                 std::println("<{}>", arg.tag);
+                current_tag = arg.tag;
             }
         },
         n->data
@@ -23,6 +27,11 @@ void print_tree(const std::shared_ptr<node>& n, int indent = 0) {
 
     for (const auto& child : n->children) {
         print_tree(child, indent + 2);
+    }
+
+    if (!current_tag.empty()) {
+        std::print("{:>{}}", "", indent);
+        std::println("</{}>", current_tag);
     }
 }
 
@@ -36,7 +45,9 @@ browser::browser()
 void browser::load(const url& target_url) {
     auto body = target_url.request();
     nodes_ = html_parser(body).parse();
-    print_tree(nodes_);
+
+    // print_tree(nodes_);
+
     display_list_ = layout(nodes_, font_).get_display_list();
     run();
 }
