@@ -29,20 +29,7 @@ public:
 
 private:
     [[nodiscard]] float get_ascent(const sf::Font& font, unsigned int size);
-
     [[nodiscard]] float get_descent(const sf::Font& font, unsigned int size);
-
-    std::vector<line_item> line_;
-    std::vector<render_item> display_list_;
-    float cursor_x_ = constants::h_step;
-    float cursor_y_ = constants::v_step;
-    int weight_ = sf::Text::Style::Regular;
-    int style_ = sf::Text::Style::Regular;
-    int size_ = constants::font_size;
-    float width_;
-
-    // TODO: Change this.
-    const sf::Font* font_;
 
     void recurse(const std::shared_ptr<node>& node);
 
@@ -50,4 +37,17 @@ private:
     void close_tag(const element_data& element);
 
     void word(const std::string& word);
+
+    std::vector<line_item> line_;
+    std::vector<render_item> display_list_;
+
+    float cursor_x_ = constants::h_step;
+    float cursor_y_ = constants::v_step;
+    int weight_ = sf::Text::Style::Regular;
+    int style_ = sf::Text::Style::Regular;
+    int size_ = constants::font_size;
+    float width_;
+
+    // Stored as pointer to allow assignment/copying.
+    const sf::Font* font_;
 };

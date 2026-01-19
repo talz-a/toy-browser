@@ -8,19 +8,19 @@
 // No native way to get ascent of a word as of right now...
 float layout::get_ascent(const sf::Font& font, unsigned int size) {
     if (size == 0) return 0.f;
-    float top = font.getGlyph(U'\u00CA', size, false, 0).bounds.position.y;
+    const float top = font.getGlyph(U'\u00CA', size, false, 0).bounds.position.y;
     return -top;
 }
 
 // No native way to get descent of a word as of right now...
 float layout::get_descent(const sf::Font& font, unsigned int size) {
     if (size == 0) return 0.f;
-    auto glyph = font.getGlyph('p', size, false);
+    const auto glyph = font.getGlyph('p', size, false);
     return glyph.bounds.size.y + glyph.bounds.position.y;
 }
 
 layout::layout(const std::shared_ptr<node>& node, sf::Font& font, float width)
-    : width_(width), font_(&font) {
+    : width_{width}, font_{&font} {
     recurse(node);
     flush();
 }
@@ -86,7 +86,8 @@ void layout::word(const std::string& word_text) {
     word_sf.setStyle(style_ | weight_);
     const auto word_width = word_sf.getGlobalBounds().size.x;
 
-    sf::Text space_sf(*font_, " ", size_);
+    // TODO: Maybe cache so we are not calculating space_width more than once?
+    const sf::Text space_sf(*font_, " ", size_);
     const float space_width = space_sf.getGlobalBounds().size.x;
 
     if (cursor_x_ + word_width > width_ - constants::h_step) flush();
