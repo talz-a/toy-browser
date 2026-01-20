@@ -52,7 +52,7 @@ void browser::load(const url& target_url) {
 }
 
 void browser::process_events() {
-    bool needs_update = false;
+    bool needs_resize = false;
 
     while (const std::optional event = window_.pollEvent()) {
         if (event->is<sf::Event::Closed>()) {
@@ -63,31 +63,19 @@ void browser::process_events() {
                 {static_cast<float>(resized->size.x), static_cast<float>(resized->size.y)}
             );
             window_.setView(sf::View(visibleArea));
-
-            // Need to handle window resize.
-            needs_update = true;
+            needs_resize = true;
         } else if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
             if (keyPressed->code == sf::Keyboard::Key::Down) {
                 scroll_ += constants::scroll_step;
             } else if (keyPressed->code == sf::Keyboard::Key::Up) {
                 scroll_ -= constants::scroll_step;
             }
-
-            // Need clamp logic.
-            needs_update = true;
         }
     }
 
-    if (needs_update && nodes_) {
+    if (needs_resize) {
         layout lay(nodes_, font_, static_cast<float>(window_.getSize().x));
         display_list_ = lay.get_display_list();
-
-        float content_height = lay.get_height();
-        float window_height = static_cast<float>(window_.getSize().y);
-
-        // If content is shorter than window, scroll must be 0.
-        float max_scroll = std::max(0.0f, content_height - window_height);
-        scroll_ = std::clamp(scroll_, 0.0f, max_scroll);
     }
 }
 
