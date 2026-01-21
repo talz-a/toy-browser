@@ -1,11 +1,15 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
-#include <memory>
 #include <string>
 #include <vector>
 #include "browser/constants.hpp"
 #include "browser/html_parser.hpp"
+
+class document_layout;
+class block_layout;
+
+using layout_parent = std::variant<document_layout*, block_layout*>;
 
 struct render_item {
     float x{}, y{};
@@ -17,14 +21,22 @@ struct line_item {
     sf::Text text;
 };
 
-class layout {
+class block_layout {
 public:
-    layout(const node* node, sf::Font& font, float width);
+    block_layout(
+        const node* n,
+        layout_parent parent,
+        const block_layout* previous,
+        const sf::Font& font,
+        float width
+    )
+        : node_{n}, parent_{parent}, previous_{previous}, font_{&font}, width_{width} {}
 
-    [[nodiscard]] const std::vector<render_item>& get_display_list() const { return display_list_; }
+    void layout();
 
     void flush();
 
+    [[nodiscard]] const std::vector<render_item>& get_display_list() const { return display_list_; }
     [[nodiscard]] float get_height() const { return cursor_y_; }
 
 private:
@@ -37,6 +49,11 @@ private:
     void close_tag(const element_data& element);
 
     void word(const std::string& word);
+
+    const node* node_;
+    layout_parent parent_;
+    const block_layout* previous_ = nullptr;
+    std::vector<std::unique_ptr<block_layout>> children_;
 
     std::vector<line_item> line_;
     std::vector<render_item> display_list_;

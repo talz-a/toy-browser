@@ -46,8 +46,12 @@ void browser::load(const url& target_url) {
 
     // print_tree(nodes_.get());
 
-    display_list_ =
-        layout(nodes_.get(), font_, static_cast<float>(window_.getSize().x)).get_display_list();
+    document_.emplace(
+        document_layout(nodes_.get(), font_, static_cast<float>(window_.getSize().x))
+    );
+    document_->layout();
+    display_list_ = document_->get_display_list();
+
     run();
 }
 
@@ -74,8 +78,9 @@ void browser::process_events() {
     }
 
     if (needs_resize) {
-        layout lay(nodes_.get(), font_, static_cast<float>(window_.getSize().x));
-        display_list_ = lay.get_display_list();
+        document_.emplace(nodes_.get(), font_, static_cast<float>(window_.getSize().x));
+        document_->layout();
+        display_list_ = document_->get_display_list();
     }
 }
 

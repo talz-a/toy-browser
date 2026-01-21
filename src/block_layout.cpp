@@ -1,4 +1,4 @@
-#include "browser/layout.hpp"
+#include "browser/block_layout.hpp"
 #include <algorithm>
 #include <memory>
 #include <ranges>
@@ -6,26 +6,25 @@
 #include "browser/html_parser.hpp"
 
 // No native way to get ascent of a word as of right now...
-float layout::get_ascent(const sf::Font& font, unsigned int size) {
+float block_layout::get_ascent(const sf::Font& font, unsigned int size) {
     if (size == 0) return 0.f;
     const float top = font.getGlyph(U'\u00CA', size, false, 0).bounds.position.y;
     return -top;
 }
 
 // No native way to get descent of a word as of right now...
-float layout::get_descent(const sf::Font& font, unsigned int size) {
+float block_layout::get_descent(const sf::Font& font, unsigned int size) {
     if (size == 0) return 0.f;
     const auto glyph = font.getGlyph('p', size, false);
     return glyph.bounds.size.y + glyph.bounds.position.y;
 }
 
-layout::layout(const node* node, sf::Font& font, float width)
-    : width_{width}, font_{&font} {
-    recurse(node);
+void block_layout::layout() {
+    recurse(node_);
     flush();
 }
 
-void layout::recurse(const node* node) {
+void block_layout::recurse(const node* node) {
     if (!node) return;
 
     std::visit(
@@ -54,7 +53,7 @@ void layout::recurse(const node* node) {
     );
 }
 
-void layout::open_tag(const element_data& element) {
+void block_layout::open_tag(const element_data& element) {
     if (element.tag == "i") {
         style_ = sf::Text::Style::Italic;
     } else if (element.tag == "b") {
@@ -68,7 +67,7 @@ void layout::open_tag(const element_data& element) {
     }
 }
 
-void layout::close_tag(const element_data& element) {
+void block_layout::close_tag(const element_data& element) {
     if (element.tag == "i") {
         style_ = sf::Text::Style::Regular;
     } else if (element.tag == "b") {
@@ -83,7 +82,7 @@ void layout::close_tag(const element_data& element) {
     }
 }
 
-void layout::word(const std::string& word_text) {
+void block_layout::word(const std::string& word_text) {
     sf::Text word_sf(*font_, sf::String::fromUtf8(word_text.begin(), word_text.end()), size_);
     word_sf.setStyle(style_ | weight_);
     const auto word_width = word_sf.getGlobalBounds().size.x;
@@ -99,7 +98,7 @@ void layout::word(const std::string& word_text) {
     cursor_x_ += word_width + space_width;
 }
 
-void layout::flush() {
+void block_layout::flush() {
     if (line_.empty()) return;
 
     float max_ascent = 0.f;

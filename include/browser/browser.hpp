@@ -1,8 +1,8 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
+#include "browser/document_layout.hpp"
 #include "browser/html_parser.hpp"
-#include "browser/layout.hpp"
 #include "browser/url.hpp"
 
 class browser {
@@ -17,6 +17,7 @@ private:
     void render();
 
     float scroll_ = 0.0f;
+    std::optional<document_layout> document_;
     sf::RenderWindow window_;
     sf::Font font_;
     std::vector<render_item> display_list_;

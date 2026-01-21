@@ -9,6 +9,7 @@ Checks: >
   -modernize-use-trailing-return-type,
   -cppcoreguidelines-avoid-magic-numbers,
   -bugprone-exception-escape,
+  -bugprone-easily-swappable-parameters
 
 HeaderFilterRegex: 'src/.*|include/.*'
 WarningsAsErrors: "*"
