@@ -20,5 +20,5 @@ private:
     sf::RenderWindow window_;
     sf::Font font_;
     std::vector<render_item> display_list_;
-    std::shared_ptr<node> nodes_;
+    std::unique_ptr<node> nodes_;
 };

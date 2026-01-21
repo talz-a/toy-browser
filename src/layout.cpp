@@ -19,13 +19,15 @@ float layout::get_descent(const sf::Font& font, unsigned int size) {
     return glyph.bounds.size.y + glyph.bounds.position.y;
 }
 
-layout::layout(const std::shared_ptr<node>& node, sf::Font& font, float width)
+layout::layout(const node* node, sf::Font& font, float width)
     : width_{width}, font_{&font} {
     recurse(node);
     flush();
 }
 
-void layout::recurse(const std::shared_ptr<node>& node) {
+void layout::recurse(const node* node) {
+    if (!node) return;
+
     std::visit(
         [&](auto&& arg) {
             using T = std::decay_t<decltype(arg)>;
@@ -43,7 +45,7 @@ void layout::recurse(const std::shared_ptr<node>& node) {
             } else if constexpr (std::is_same_v<T, element_data>) {
                 open_tag(arg);
                 for (const auto& child : node->children) {
-                    recurse(child);
+                    recurse(child.get());
                 }
                 close_tag(arg);
             }

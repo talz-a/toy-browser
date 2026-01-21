@@ -22,17 +22,17 @@ struct node {
     std::variant<text_data, element_data> data;
 
     // Text nodes don't have children but is here for simplificaiton.
-    std::vector<std::shared_ptr<node>> children;
+    std::vector<std::unique_ptr<node>> children;
 
     // This is a weak_ptr to avoid a refernce cycle.
-    std::weak_ptr<node> parent;
+    node* parent = nullptr;
 };
 
 class html_parser {
 public:
     explicit html_parser(std::string_view body) : body_{body} {}
 
-    [[nodiscard]] std::shared_ptr<node> parse();
+    [[nodiscard]] std::unique_ptr<node> parse();
 
 private:
     void add_text(std::string_view text);
@@ -43,7 +43,7 @@ private:
 
     void implicit_tags(std::optional<std::string_view> tag = std::nullopt);
 
-    [[nodiscard]] std::shared_ptr<node> finish();
+    [[nodiscard]] std::unique_ptr<node> finish();
 
     static constexpr auto self_closing_tags_ = std::to_array(
         {"area",
@@ -73,5 +73,5 @@ private:
         "script",
     });
     std::string_view body_;
-    std::vector<std::shared_ptr<node>> unfinished_;
+    std::vector<std::unique_ptr<node>> unfinished_;
 };

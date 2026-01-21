@@ -19,7 +19,7 @@ struct line_item {
 
 class layout {
 public:
-    layout(const std::shared_ptr<node>& node, sf::Font& font, float width);
+    layout(const node* node, sf::Font& font, float width);
 
     [[nodiscard]] const std::vector<render_item>& get_display_list() const { return display_list_; }
 
@@ -31,7 +31,7 @@ private:
     [[nodiscard]] float get_ascent(const sf::Font& font, unsigned int size);
     [[nodiscard]] float get_descent(const sf::Font& font, unsigned int size);
 
-    void recurse(const std::shared_ptr<node>& node);
+    void recurse(const node* node);
 
     void open_tag(const element_data& element);
     void close_tag(const element_data& element);

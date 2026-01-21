@@ -6,7 +6,7 @@
 #include <vector>
 #include "browser/utils.hpp"
 
-std::shared_ptr<node> html_parser::parse() {
+std::unique_ptr<node> html_parser::parse() {
     std::string text;
     bool in_tag = false;
 
@@ -37,11 +37,11 @@ void html_parser::add_text(std::string_view text) {
 
     const auto& parent = unfinished_.back();
 
-    auto new_node = std::make_shared<node>();
+    auto new_node = std::make_unique<node>();
     new_node->data = text_data{.text = std::string(text)};
-    new_node->parent = parent;
+    new_node->parent = parent.get();
 
-    parent->children.push_back(new_node);
+    parent->children.push_back(std::move(new_node));
 }
 
 void html_parser::add_tag(std::string_view raw_tag) {
@@ -54,28 +54,28 @@ void html_parser::add_tag(std::string_view raw_tag) {
     if (tag.starts_with('/')) {
         if (unfinished_.size() == 1) return;
 
-        const auto node = unfinished_.back();
+        auto node = std::move(unfinished_.back());
         unfinished_.pop_back();
 
         const auto& parent = unfinished_.back();
-        parent->children.push_back(node);
+        parent->children.push_back(std::move(node));
 
     } else if (std::ranges::contains(self_closing_tags_, tag)) {
         const auto& parent = unfinished_.back();
 
-        auto new_node = std::make_shared<node>();
+        auto new_node = std::make_unique<node>();
         new_node->data = element_data{.tag = std::string(tag), .attributes = std::move(attributes)};
-        new_node->parent = parent;
+        new_node->parent = parent.get();
 
-        parent->children.push_back(new_node);
+        parent->children.push_back(std::move(new_node));
     } else {
-        const auto parent = unfinished_.empty() ? nullptr : unfinished_.back();
+        node* parent = unfinished_.empty() ? nullptr : unfinished_.back().get();
 
-        auto new_node = std::make_shared<node>();
+        auto new_node = std::make_unique<node>();
         new_node->data = element_data{.tag = std::string(tag), .attributes = std::move(attributes)};
         new_node->parent = parent;
 
-        unfinished_.push_back(new_node);
+        unfinished_.push_back(std::move(new_node));
     }
 }
 
@@ -150,20 +150,20 @@ void html_parser::implicit_tags(std::optional<std::string_view> tag) {
     }
 }
 
-std::shared_ptr<node> html_parser::finish() {
+std::unique_ptr<node> html_parser::finish() {
     if (unfinished_.empty()) return nullptr;
 
     implicit_tags();
 
     while (unfinished_.size() > 1) {
-        const auto node = unfinished_.back();
+        auto node = std::move(unfinished_.back());
         unfinished_.pop_back();
 
         auto const& parent = unfinished_.back();
-        parent->children.push_back(node);
+        parent->children.push_back(std::move(node));
     }
 
-    const auto root = unfinished_.back();
+    auto root = std::move(unfinished_.back());
     unfinished_.pop_back();
     return root;
 }

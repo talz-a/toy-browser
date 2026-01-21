@@ -5,7 +5,7 @@
 #include <vector>
 #include "browser/html_parser.hpp"
 
-void print_tree(const std::shared_ptr<node>& n, int indent = 0) {
+void print_tree(const node* n, int indent = 0) {
     if (!n) return;
 
     std::string_view current_tag;
@@ -25,7 +25,7 @@ void print_tree(const std::shared_ptr<node>& n, int indent = 0) {
     );
 
     for (const auto& child : n->children) {
-        print_tree(child, indent + 2);
+        print_tree(child.get(), indent + 2);
     }
 
     if (!current_tag.empty()) {
@@ -44,10 +44,10 @@ void browser::load(const url& target_url) {
     const auto body = target_url.request();
     nodes_ = html_parser(body).parse();
 
-    // print_tree(nodes_);
+    // print_tree(nodes_.get());
 
     display_list_ =
-        layout(nodes_, font_, static_cast<float>(window_.getSize().x)).get_display_list();
+        layout(nodes_.get(), font_, static_cast<float>(window_.getSize().x)).get_display_list();
     run();
 }
 
@@ -74,7 +74,7 @@ void browser::process_events() {
     }
 
     if (needs_resize) {
-        layout lay(nodes_, font_, static_cast<float>(window_.getSize().x));
+        layout lay(nodes_.get(), font_, static_cast<float>(window_.getSize().x));
         display_list_ = lay.get_display_list();
     }
 }
