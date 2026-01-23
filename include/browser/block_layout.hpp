@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
+#include <array>
 #include <string>
 #include <vector>
 #include "browser/constants.hpp"
@@ -33,15 +34,32 @@ public:
         : node_{n}, parent_{parent}, previous_{previous}, font_{&font}, width_{width} {}
 
     void layout();
-
     void flush();
+
+    // Getters for debugging and printing.
+    [[nodiscard]] const std::vector<std::unique_ptr<block_layout>>& get_children() const {
+        return children_;
+    }
+    [[nodiscard]] const node* get_node() const { return node_; }
 
     [[nodiscard]] const std::vector<render_item>& get_display_list() const { return display_list_; }
     [[nodiscard]] float get_height() const { return cursor_y_; }
 
 private:
+    // Probably move this at some point.
+    static constexpr auto block_elements_ = std::to_array(
+        {"html", "body",     "article", "section",    "nav",        "aside",  "h1",     "h2",
+         "h3",   "h4",       "h5",      "h6",         "hgroup",     "header", "footer", "address",
+         "p",    "hr",       "pre",     "blockquote", "ol",         "ul",     "menu",   "li",
+         "dl",   "dt",       "dd",      "figure",     "figcaption", "main",   "div",    "table",
+         "form", "fieldset", "legend",  "details",    "summary"}
+    );
+
     [[nodiscard]] float get_ascent(const sf::Font& font, unsigned int size);
     [[nodiscard]] float get_descent(const sf::Font& font, unsigned int size);
+
+    // Maybe change this to enum return as some point.
+    [[nodiscard]] std::string_view layout_mode() const;
 
     void recurse(const node* node);
 

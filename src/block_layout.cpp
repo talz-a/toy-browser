@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <memory>
 #include <ranges>
+#include <variant>
 #include "browser/constants.hpp"
 #include "browser/html_parser.hpp"
 
@@ -20,8 +21,67 @@ float block_layout::get_descent(const sf::Font& font, unsigned int size) {
 }
 
 void block_layout::layout() {
-    recurse(node_);
-    flush();
+    auto mode = layout_mode();
+
+    if (mode == "block") {
+        block_layout* previous = nullptr;
+
+        for (const auto& child : node_->children) {
+            // Create new child layout.
+            auto next = std::make_unique<block_layout>(child.get(), this, previous, *font_, width_);
+
+            // Get a raw pointer to use as 'previous' for next layout.
+            previous = next.get();
+
+            // Move ownership into chilren_.
+            children_.push_back(std::move(next));
+        }
+
+    } else {
+        cursor_x_ = 0;
+        cursor_y_ = 0;
+
+        // cursor_x_ = constants::h_step;
+        // cursor_y_ = constants::v_step;
+
+        weight_ = sf::Text::Style::Regular;
+        style_ = sf::Text::Style::Regular;
+        size_ = constants::font_size;
+
+        line_.clear();
+        recurse(node_);
+        flush();
+    }
+
+    for (const auto& child : children_) {
+        child->layout();
+    }
+}
+
+std::string_view block_layout::layout_mode() const {
+    return std::visit(
+        [&](auto&& arg) -> std::string_view {
+            using T = std::decay_t<decltype(arg)>;
+
+            if constexpr (std::is_same_v<T, text_data>) {
+                return "inline";
+            }
+
+            else if constexpr (std::is_same_v<T, element_data>) {
+                bool has_block_child = std::ranges::any_of(node_->children, [](const auto& child) {
+                    if (auto* el = std::get_if<element_data>(&child->data)) {
+                        return std::ranges::contains(block_elements_, el->tag);
+                    }
+                    return false;
+                });
+
+                if (has_block_child) return "block";
+            }
+
+            return node_->children.empty() ? "block" : "inline";
+        },
+        node_->data
+    );
 }
 
 void block_layout::recurse(const node* node) {
@@ -31,7 +91,7 @@ void block_layout::recurse(const node* node) {
         [&](auto&& arg) {
             using T = std::decay_t<decltype(arg)>;
             if constexpr (std::is_same_v<T, text_data>) {
-                // NOTE: We should be spliting on \n's and \t's like python does, but since C++
+                // We should be spliting on \n's and \t's like python does, but since C++
                 // split does not, we need to normalize it here.
                 std::string text = arg.text;
                 std::ranges::replace_if(text, [](unsigned char c) { return std::isspace(c); }, ' ');

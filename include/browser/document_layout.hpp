@@ -12,6 +12,11 @@ public:
 
     [[nodiscard]] const std::vector<render_item>& get_display_list() const { return display_list_; }
 
+    // For debug printing the tree.
+    [[nodiscard]] const block_layout* get_root() const {
+        return children_.empty() ? nullptr : children_.front().get();
+    }
+
 private:
     const node* node_;
     const block_layout* parent_ = nullptr;

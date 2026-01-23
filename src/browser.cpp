@@ -34,6 +34,33 @@ void print_tree(const node* n, int indent = 0) {
     }
 }
 
+void print_layout_tree(const block_layout* layout, int indent = 0) {
+    if (!layout) return;
+
+    std::print("{:>{}}", "", indent);
+    std::print("BlockLayout");
+
+    const node* n = layout->get_node();
+    std::visit(
+        [&](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, element_data>) {
+                std::print(" (<{}>)", arg.tag);
+            } else if constexpr (std::is_same_v<T, text_data>) {
+                std::string snippet = arg.text.substr(0, 20);
+                std::print(" (\"{}...\")", snippet);
+            }
+        },
+        n->data
+    );
+
+    std::println("");
+
+    for (const auto& child : layout->get_children()) {
+        print_layout_tree(child.get(), indent + 2);
+    }
+}
+
 browser::browser() : window_(sf::VideoMode({800, 600}), "Toy Browser") {
     if (!font_.openFromFile("assets/Inter-VariableFont.ttf")) {
         throw std::runtime_error("ERROR: No font loaded.");
@@ -50,6 +77,9 @@ void browser::load(const url& target_url) {
         document_layout(nodes_.get(), font_, static_cast<float>(window_.getSize().x))
     );
     document_->layout();
+
+    // print_layout_tree(document_->get_root());
+
     display_list_ = document_->get_display_list();
 
     run();

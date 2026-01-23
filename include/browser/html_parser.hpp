@@ -24,7 +24,6 @@ struct node {
     // Text nodes don't have children but is here for simplificaiton.
     std::vector<std::unique_ptr<node>> children;
 
-    // This is a weak_ptr to avoid a refernce cycle.
     node* parent = nullptr;
 };
 
