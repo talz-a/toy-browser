@@ -55,11 +55,6 @@ void block_layout::layout() {
         height_ = std::ranges::fold_left(children_, 0.f, [](float sum, const auto& child) {
             return sum + child->height_;
         });
-
-        for (const auto& child : children_) {
-            const auto& child_list = child->get_display_list();
-            display_list_.insert(display_list_.end(), child_list.begin(), child_list.end());
-        }
     } else {
         cursor_x_ = 0.f;
         cursor_y_ = 0.f;

@@ -9,7 +9,14 @@ struct document_layout {
 
     void layout();
 
+    [[nodiscard]] const std::vector<render_item>& paint() const { return display_list_; };
+
+    // Should probably remove this function or go back to classes.
     [[nodiscard]] const std::vector<render_item>& get_display_list() const { return display_list_; }
+
+    [[nodiscard]] const std::vector<std::unique_ptr<block_layout>>& get_children() const {
+        return children_;
+    }
 
     // For debug printing the tree.
     [[nodiscard]] const block_layout* get_root() const {

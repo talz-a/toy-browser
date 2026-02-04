@@ -13,6 +13,5 @@ void document_layout::layout() {
     // Set height before moving...
     height_ = child->height_;
 
-    display_list_ = child->get_display_list();
     children_.push_back(std::move(child));
 }

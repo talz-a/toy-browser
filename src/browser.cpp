@@ -2,6 +2,7 @@
 #include <SFML/Graphics.hpp>
 #include <optional>
 #include <print>
+#include <variant>
 #include <vector>
 #include "browser/html_parser.hpp"
 
@@ -61,6 +62,19 @@ void print_layout_tree(const block_layout* layout, int indent = 0) {
     }
 }
 
+void paint_tree(const layout_parent& layout_object, std::vector<render_item>& display_list) {
+    display_list.append_range(std::visit([](auto&& arg) { return arg->paint(); }, layout_object));
+
+    for (const auto& child : std::visit(
+             [](auto&& arg) -> const std::vector<std::unique_ptr<block_layout>>& {
+                 return arg->children_;
+             },
+             layout_object
+         )) {
+        paint_tree(child.get(), display_list);
+    }
+}
+
 browser::browser() : window_(sf::VideoMode({800, 600}), "Toy Browser") {
     if (!font_.openFromFile("assets/Inter-VariableFont.ttf")) {
         throw std::runtime_error("ERROR: No font loaded.");
@@ -80,7 +94,8 @@ void browser::load(const url& target_url) {
 
     // print_layout_tree(document_->get_root());
 
-    display_list_ = document_->get_display_list();
+    display_list_.clear();
+    paint_tree(&*document_, display_list_);
 
     run();
 }
@@ -110,7 +125,9 @@ void browser::process_events() {
     if (needs_resize) {
         document_.emplace(nodes_.get(), font_, static_cast<float>(window_.getSize().x));
         document_->layout();
-        display_list_ = document_->get_display_list();
+
+        display_list_.clear();
+        paint_tree(&*document_, display_list_);
     }
 }
 

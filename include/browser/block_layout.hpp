@@ -41,6 +41,9 @@ struct block_layout {
     }
     [[nodiscard]] const node* get_node() const { return node_; }
 
+    // Also the same as get_display_list...
+    [[nodiscard]] const std::vector<render_item>& paint() const { return display_list_; }
+
     [[nodiscard]] const std::vector<render_item>& get_display_list() const { return display_list_; }
     [[nodiscard]] float get_height() const { return cursor_y_; }
 
