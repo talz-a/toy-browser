@@ -3,8 +3,7 @@
 #include "block_layout.hpp"
 #include "html_parser.hpp"
 
-class document_layout {
-public:
+struct document_layout {
     document_layout(const node* n, const sf::Font& font, float width)
         : node_{n}, font_{&font}, width_{width} {}
 
@@ -17,13 +16,16 @@ public:
         return children_.empty() ? nullptr : children_.front().get();
     }
 
-private:
     const node* node_;
     const block_layout* parent_ = nullptr;
     std::vector<std::unique_ptr<block_layout>> children_;
 
     const sf::Font* font_;
     float width_;
+
+    float height_{};
+    float x_{};
+    float y_{};
 
     std::vector<render_item> display_list_;
 };

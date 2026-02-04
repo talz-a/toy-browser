@@ -22,8 +22,7 @@ struct line_item {
     sf::Text text;
 };
 
-class block_layout {
-public:
+struct block_layout {
     block_layout(
         const node* n,
         layout_parent parent,
@@ -45,7 +44,6 @@ public:
     [[nodiscard]] const std::vector<render_item>& get_display_list() const { return display_list_; }
     [[nodiscard]] float get_height() const { return cursor_y_; }
 
-private:
     // Probably move this at some point.
     static constexpr auto block_elements_ = std::to_array(
         {"html", "body",     "article", "section",    "nav",        "aside",  "h1",     "h2",
@@ -82,6 +80,11 @@ private:
     int style_ = sf::Text::Style::Regular;
     int size_ = constants::font_size;
     float width_;
+
+    // TODO: Change these to constructor stuff.
+    float height_{};
+    float x_{};
+    float y_{};
 
     // Stored as pointer to allow assignment/copying.
     const sf::Font* font_;

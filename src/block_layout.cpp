@@ -4,6 +4,7 @@
 #include <ranges>
 #include <variant>
 #include "browser/constants.hpp"
+#include "browser/document_layout.hpp"  // IWYU pragma: keep
 #include "browser/html_parser.hpp"
 
 // No native way to get ascent of a word as of right now...
@@ -21,6 +22,15 @@ float block_layout::get_descent(const sf::Font& font, unsigned int size) {
 }
 
 void block_layout::layout() {
+    x_ = std::visit([](auto&& arg) { return arg->x_; }, parent_);
+    width_ = std::visit([](auto&& arg) { return arg->width_; }, parent_);
+
+    if (previous_) {
+        y_ = previous_->y_ + previous_->height_;
+    } else {
+        y_ = std::visit([](auto&& arg) { return arg->y_; }, parent_);
+    }
+
     auto mode = layout_mode();
 
     if (mode == "block") {
@@ -37,12 +47,24 @@ void block_layout::layout() {
             children_.push_back(std::move(next));
         }
 
-    } else {
-        cursor_x_ = 0;
-        cursor_y_ = 0;
+        for (const auto& child : children_) {
+            child->layout();
+        }
 
-        // cursor_x_ = constants::h_step;
-        // cursor_y_ = constants::v_step;
+        // This needs to be after as the height of a layout depends on the layout of it's childern.
+        height_ = std::ranges::fold_left(children_, 0.f, [](float sum, const auto& child) {
+            return sum + child->height_;
+        });
+
+        for (const auto& child : children_) {
+            const auto& child_list = child->get_display_list();
+            display_list_.insert(display_list_.end(), child_list.begin(), child_list.end());
+        }
+    } else {
+        cursor_x_ = 0.f;
+        cursor_y_ = 0.f;
+
+        height_ = cursor_y_;
 
         weight_ = sf::Text::Style::Regular;
         style_ = sf::Text::Style::Regular;
@@ -51,10 +73,8 @@ void block_layout::layout() {
         line_.clear();
         recurse(node_);
         flush();
-    }
 
-    for (const auto& child : children_) {
-        child->layout();
+        height_ = cursor_y_;
     }
 }
 
@@ -151,7 +171,7 @@ void block_layout::word(const std::string& word_text) {
     const sf::Text space_sf(*font_, " ", size_);
     const float space_width = space_sf.getGlobalBounds().size.x;
 
-    if (cursor_x_ + word_width > width_ - constants::h_step) flush();
+    if (cursor_x_ + word_width > width_) flush();
 
     line_.push_back({cursor_x_, std::move(word_sf)});
 
@@ -175,15 +195,18 @@ void block_layout::flush() {
 
     const float baseline = cursor_y_ + constants::line_height_multiplier * max_ascent;
 
-    for (auto& [x, text] : line_) {
+    for (auto& [rel_x, text] : line_) {
         const auto& font = text.getFont();
         unsigned int size = text.getCharacterSize();
+
         const float ascent = get_ascent(font, size);
-        const float y = baseline - ascent;
+        const float y = y_ + baseline - ascent;
+        const float x = x_ + rel_x;
+
         display_list_.emplace_back(render_item{.x = x, .y = y, .text = std::move(text)});
     }
 
     cursor_y_ = baseline + (constants::line_height_multiplier * max_descent);
-    cursor_x_ = constants::h_step;
+    cursor_x_ = 0.f;
     line_.clear();
 }
