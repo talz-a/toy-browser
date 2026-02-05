@@ -8,11 +8,6 @@
 #include "browser/draw_commands.hpp"
 #include "browser/html_parser.hpp"
 
-class document_layout;
-class block_layout;
-
-using layout_parent = std::variant<document_layout*, block_layout*>;
-
 struct render_item {
     float x{}, y{};
     sf::Text text;
@@ -23,9 +18,19 @@ struct line_item {
     sf::Text text;
 };
 
+enum class layout_mode : std::uint8_t {
+    block,
+    inline_context,
+};
+
+// @TODO: See if we can get around this forward decl stuff.
+struct document_layout;
+struct block_layout;
+using layout_parent = std::variant<document_layout*, block_layout*>;
+
 struct block_layout {
     block_layout(
-        const node* n,
+        const html_node* n,
         layout_parent parent,
         const block_layout* previous,
         const sf::Font& font,
@@ -36,44 +41,26 @@ struct block_layout {
     void layout();
     void flush();
 
-    // Getters for debugging and printing.
-    [[nodiscard]] const std::vector<std::unique_ptr<block_layout>>& get_children() const {
-        return children_;
-    }
-    [[nodiscard]] const node* get_node() const { return node_; }
+    [[nodiscard]] std::vector<draw_cmds> paint();
 
-    // Also the same as get_display_list...
-    std::vector<draw_cmds> paint();
+    [[nodiscard]] float get_ascent(const sf::Font& font, unsigned int size) const;
+    [[nodiscard]] float get_descent(const sf::Font& font, unsigned int size) const;
 
-    [[nodiscard]] float get_height() const { return cursor_y_; }
+    [[nodiscard]] layout_mode get_layout_mode() const;
 
-    // Probably move this at some point.
-    static constexpr auto block_elements_ = std::to_array(
-        {"html", "body",     "article", "section",    "nav",        "aside",  "h1",     "h2",
-         "h3",   "h4",       "h5",      "h6",         "hgroup",     "header", "footer", "address",
-         "p",    "hr",       "pre",     "blockquote", "ol",         "ul",     "menu",   "li",
-         "dl",   "dt",       "dd",      "figure",     "figcaption", "main",   "div",    "table",
-         "form", "fieldset", "legend",  "details",    "summary"}
-    );
-
-    [[nodiscard]] float get_ascent(const sf::Font& font, unsigned int size);
-    [[nodiscard]] float get_descent(const sf::Font& font, unsigned int size);
-
-    // Maybe change this to enum return as some point.
-    [[nodiscard]] std::string_view layout_mode() const;
-
-    void recurse(const node* node);
+    void recurse(const html_node* node);
 
     void open_tag(const element_data& element);
     void close_tag(const element_data& element);
 
     void word(const std::string& word);
 
-    const node* node_;
+    const html_node* node_;
     layout_parent parent_;
     const block_layout* previous_ = nullptr;
-    std::vector<std::unique_ptr<block_layout>> children_;
+    float width_;
 
+    std::vector<std::unique_ptr<block_layout>> children_;
     std::vector<line_item> line_;
     std::vector<render_item> display_list_;
 
@@ -82,13 +69,19 @@ struct block_layout {
     int weight_ = sf::Text::Style::Regular;
     int style_ = sf::Text::Style::Regular;
     int size_ = constants::font_size;
-    float width_;
 
-    // TODO: Change these to constructor stuff.
-    float height_{};
     float x_{};
     float y_{};
+    float height_{};
 
     // Stored as pointer to allow assignment/copying.
     const sf::Font* font_;
+
+    static constexpr auto block_elements_ = std::to_array(
+        {"html", "body",     "article", "section",    "nav",        "aside",  "h1",     "h2",
+         "h3",   "h4",       "h5",      "h6",         "hgroup",     "header", "footer", "address",
+         "p",    "hr",       "pre",     "blockquote", "ol",         "ul",     "menu",   "li",
+         "dl",   "dt",       "dd",      "figure",     "figcaption", "main",   "div",    "table",
+         "form", "fieldset", "legend",  "details",    "summary"}
+    );
 };

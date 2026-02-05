@@ -9,33 +9,31 @@
 #include "browser/draw_commands.hpp"
 #include "browser/html_parser.hpp"
 
-// No native way to get ascent of a word as of right now...
-float block_layout::get_ascent(const sf::Font& font, unsigned int size) {
+// @HACK: No native way to get ascent of a word as of right now...
+float block_layout::get_ascent(const sf::Font& font, unsigned int size) const {
     if (size == 0) return 0.f;
     const float top = font.getGlyph(U'\u00CA', size, false, 0).bounds.position.y;
     return -top;
 }
 
-// No native way to get descent of a word as of right now...
-float block_layout::get_descent(const sf::Font& font, unsigned int size) {
+// @HACK: No native way to get descent of a word as of right now...
+float block_layout::get_descent(const sf::Font& font, unsigned int size) const {
     if (size == 0) return 0.f;
     const auto glyph = font.getGlyph('p', size, false);
     return glyph.bounds.size.y + glyph.bounds.position.y;
 }
 
 void block_layout::layout() {
-    x_ = std::visit([](auto&& arg) { return arg->x_; }, parent_);
-    width_ = std::visit([](auto&& arg) { return arg->width_; }, parent_);
+    const auto [p_x, p_y, p_width] =
+        std::visit([](auto&& p) { return std::tuple{p->x_, p->y_, p->width_}; }, parent_);
 
-    if (previous_) {
-        y_ = previous_->y_ + previous_->height_;
-    } else {
-        y_ = std::visit([](auto&& arg) { return arg->y_; }, parent_);
-    }
+    x_ = p_x;
+    width_ = p_width;
+    y_ = previous_ ? (previous_->y_ + previous_->height_) : p_y;
 
-    auto mode = layout_mode();
+    auto mode = get_layout_mode();
 
-    if (mode == "block") {
+    if (mode == layout_mode::block) {
         block_layout* previous = nullptr;
 
         for (const auto& child : node_->children) {
@@ -45,7 +43,7 @@ void block_layout::layout() {
             // Get a raw pointer to use as 'previous' for next layout.
             previous = next.get();
 
-            // Move ownership into chilren_.
+            // Move ownership into children_.
             children_.push_back(std::move(next));
         }
 
@@ -67,12 +65,44 @@ void block_layout::layout() {
         style_ = sf::Text::Style::Regular;
         size_ = constants::font_size;
 
-        line_.clear();
         recurse(node_);
         flush();
 
         height_ = cursor_y_;
     }
+}
+
+void block_layout::flush() {
+    if (line_.empty()) return;
+
+    float max_ascent = 0.f;
+    float max_descent = 0.f;
+
+    for (const auto& [x, text] : line_) {
+        const auto& font = text.getFont();
+        unsigned int size = text.getCharacterSize();
+        const float ascent = get_ascent(font, size);
+        const float descent = get_descent(font, size);
+        max_ascent = std::max(max_ascent, ascent);
+        max_descent = std::max(max_descent, descent);
+    }
+
+    const float baseline = cursor_y_ + constants::line_height_multiplier * max_ascent;
+
+    for (auto& [rel_x, text] : line_) {
+        const auto& font = text.getFont();
+        unsigned int size = text.getCharacterSize();
+
+        const float ascent = get_ascent(font, size);
+        const float y = y_ + baseline - ascent;
+        const float x = x_ + rel_x;
+
+        display_list_.emplace_back(render_item{.x = x, .y = y, .text = std::move(text)});
+    }
+
+    cursor_y_ = baseline + (constants::line_height_multiplier * max_descent);
+    cursor_x_ = 0.f;
+    line_.clear();
 }
 
 std::vector<draw_cmds> block_layout::paint() {
@@ -82,29 +112,28 @@ std::vector<draw_cmds> block_layout::paint() {
         if (el->tag == "pre") {
             float x2 = x_ + width_;
             float y2 = y_ + height_;
-            cmds.emplace_back(draw_rect(x_, y_, x2, y2, sf::Color::Cyan));
+            constexpr auto gray = sf::Color{217, 217, 217};
+            cmds.emplace_back(draw_rect(x_, y_, x2, y2, gray));
         }
     }
 
-    if (layout_mode() == "inline") {
-        for (const auto& [x, y, word] : display_list_) {
-            cmds.emplace_back(draw_text(x, y, word));
+    if (get_layout_mode() == layout_mode::inline_context) {
+        for (auto& [x, y, word] : display_list_) {
+            cmds.emplace_back(draw_text(x, y, std::move(word)));
         }
     }
 
     return cmds;
 }
 
-std::string_view block_layout::layout_mode() const {
+layout_mode block_layout::get_layout_mode() const {
     return std::visit(
-        [&](auto&& arg) -> std::string_view {
+        [&](auto&& arg)->enum layout_mode {
             using T = std::decay_t<decltype(arg)>;
 
             if constexpr (std::is_same_v<T, text_data>) {
-                return "inline";
-            }
-
-            else if constexpr (std::is_same_v<T, element_data>) {
+                return layout_mode::inline_context;
+            } else if constexpr (std::is_same_v<T, element_data>) {
                 bool has_block_child = std::ranges::any_of(node_->children, [](const auto& child) {
                     if (auto* el = std::get_if<element_data>(&child->data)) {
                         return std::ranges::contains(block_elements_, el->tag);
@@ -112,16 +141,16 @@ std::string_view block_layout::layout_mode() const {
                     return false;
                 });
 
-                if (has_block_child) return "block";
+                if (has_block_child) return layout_mode::block;
             }
 
-            return node_->children.empty() ? "block" : "inline";
+            return node_->children.empty() ? layout_mode::block : layout_mode::inline_context;
         },
         node_->data
     );
 }
 
-void block_layout::recurse(const node* node) {
+void block_layout::recurse(const html_node* node) {
     if (!node) return;
 
     std::visit(
@@ -133,7 +162,7 @@ void block_layout::recurse(const node* node) {
                 std::string text = arg.text;
                 std::ranges::replace_if(text, [](unsigned char c) { return std::isspace(c); }, ' ');
 
-                for (const auto w : std::views::split(text, ' ')) {
+                for (const auto& w : std::views::split(text, ' ')) {
                     if (w.empty()) continue;
                     word(std::ranges::to<std::string>(w));
                 }
@@ -182,48 +211,14 @@ void block_layout::close_tag(const element_data& element) {
 void block_layout::word(const std::string& word_text) {
     sf::Text word_sf(*font_, sf::String::fromUtf8(word_text.begin(), word_text.end()), size_);
     word_sf.setStyle(style_ | weight_);
-    const auto word_width = word_sf.getGlobalBounds().size.x;
 
-    // Maybe cache so we are not calculating space_width more than once?
-    const sf::Text space_sf(*font_, " ", size_);
-    const float space_width = space_sf.getGlobalBounds().size.x;
+    const float word_width = word_sf.getGlobalBounds().size.x;
+
+    bool is_bold = (weight_ & sf::Text::Style::Bold) || (style_ & sf::Text::Style::Bold);
+    const float space_width = font_->getGlyph(U' ', size_, is_bold).advance;
 
     if (cursor_x_ + word_width > width_) flush();
 
     line_.push_back({cursor_x_, std::move(word_sf)});
-
     cursor_x_ += word_width + space_width;
-}
-
-void block_layout::flush() {
-    if (line_.empty()) return;
-
-    float max_ascent = 0.f;
-    float max_descent = 0.f;
-
-    for (const auto& [x, text] : line_) {
-        const auto& font = text.getFont();
-        unsigned int size = text.getCharacterSize();
-        const float ascent = get_ascent(font, size);
-        const float descent = get_descent(font, size);
-        max_ascent = std::max(max_ascent, ascent);
-        max_descent = std::max(max_descent, descent);
-    }
-
-    const float baseline = cursor_y_ + constants::line_height_multiplier * max_ascent;
-
-    for (auto& [rel_x, text] : line_) {
-        const auto& font = text.getFont();
-        unsigned int size = text.getCharacterSize();
-
-        const float ascent = get_ascent(font, size);
-        const float y = y_ + baseline - ascent;
-        const float x = x_ + rel_x;
-
-        display_list_.emplace_back(render_item{.x = x, .y = y, .text = std::move(text)});
-    }
-
-    cursor_y_ = baseline + (constants::line_height_multiplier * max_descent);
-    cursor_x_ = 0.f;
-    line_.clear();
 }

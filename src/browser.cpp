@@ -8,7 +8,7 @@
 #include "browser/draw_commands.hpp"
 #include "browser/html_parser.hpp"
 
-void print_tree(const node* n, int indent = 0) {
+void print_tree(const html_node* n, int indent = 0) {
     if (!n) return;
 
     std::string_view current_tag;
@@ -43,7 +43,7 @@ void print_layout_tree(const block_layout* layout, int indent = 0) {
     std::print("{:>{}}", "", indent);
     std::print("BlockLayout");
 
-    const node* n = layout->get_node();
+    const html_node* n = layout->node_;
     std::visit(
         [&](auto&& arg) {
             using T = std::decay_t<decltype(arg)>;
@@ -59,7 +59,7 @@ void print_layout_tree(const block_layout* layout, int indent = 0) {
 
     std::println("");
 
-    for (const auto& child : layout->get_children()) {
+    for (const auto& child : layout->children_) {
         print_layout_tree(child.get(), indent + 2);
     }
 }
@@ -87,14 +87,18 @@ void browser::load(const url& target_url) {
     const auto body = target_url.request();
     nodes_ = html_parser(body).parse();
 
+    // Debug print;
     // print_tree(nodes_.get());
 
     document_.emplace(
         document_layout(nodes_.get(), font_, static_cast<float>(window_.getSize().x))
     );
+
     document_->layout();
 
-    // print_layout_tree(document_->get_root());
+    // Debug print;
+    // print_layout_tree(document_->children_.empty() ? nullptr :
+    // document_->children_.front().get());
 
     display_list_.clear();
     paint_tree(&*document_, display_list_);
@@ -136,7 +140,8 @@ void browser::process_events() {
         document_->layout();
 
         display_list_.clear();
-        paint_tree(&*document_, display_list_);
+
+        if (document_) paint_tree(&*document_, display_list_);
     }
 }
 

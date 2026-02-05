@@ -10,7 +10,7 @@ void document_layout::layout() {
     auto child = std::make_unique<block_layout>(node_, this, nullptr, *font_, width_);
     child->layout();
 
-    // Set height before moving...
+    // Set height before moving.
     height_ = child->height_;
 
     children_.push_back(std::move(child));

@@ -2,8 +2,7 @@
 
 #include <SFML/Graphics.hpp>
 
-class draw_rect {
-public:
+struct draw_rect {
     draw_rect(float x1, float y1, float x2, float y2, sf::Color color)
         : top_{y1}, left_{x1}, bottom_{y2}, right_{x2}, color_{color} {}
 
@@ -16,8 +15,7 @@ public:
     sf::Color color_;
 };
 
-class draw_text {
-public:
+struct draw_text {
     draw_text(float x1, float y1, sf::Text text) : top_{y1}, left_{x1}, text_{std::move(text)} {
         bottom_ = y1 + text_.getLineSpacing();
     }

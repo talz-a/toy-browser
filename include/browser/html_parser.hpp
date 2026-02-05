@@ -18,20 +18,21 @@ struct element_data {
     std::unordered_map<std::string, std::string> attributes;
 };
 
-struct node {
+struct html_node {
     std::variant<text_data, element_data> data;
 
-    // Text nodes don't have children but is here for simplificaiton.
-    std::vector<std::unique_ptr<node>> children;
+    // @TODO: Text nodes don't have children but is here for simplificaiton. Maybe remove this
+    // later.
+    std::vector<std::unique_ptr<html_node>> children;
 
-    node* parent = nullptr;
+    html_node* parent = nullptr;
 };
 
 class html_parser {
 public:
     explicit html_parser(std::string_view body) : body_{body} {}
 
-    [[nodiscard]] std::unique_ptr<node> parse();
+    [[nodiscard]] std::unique_ptr<html_node> parse();
 
 private:
     void add_text(std::string_view text);
@@ -42,7 +43,10 @@ private:
 
     void implicit_tags(std::optional<std::string_view> tag = std::nullopt);
 
-    [[nodiscard]] std::unique_ptr<node> finish();
+    [[nodiscard]] std::unique_ptr<html_node> finish();
+
+    std::string_view body_;
+    std::vector<std::unique_ptr<html_node>> unfinished_;
 
     static constexpr auto self_closing_tags_ = std::to_array(
         {"area",
@@ -71,6 +75,4 @@ private:
         "style",
         "script",
     });
-    std::string_view body_;
-    std::vector<std::unique_ptr<node>> unfinished_;
 };

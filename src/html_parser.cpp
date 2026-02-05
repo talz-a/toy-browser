@@ -6,7 +6,7 @@
 #include <vector>
 #include "browser/utils.hpp"
 
-std::unique_ptr<node> html_parser::parse() {
+std::unique_ptr<html_node> html_parser::parse() {
     std::string text;
     bool in_tag = false;
 
@@ -37,7 +37,7 @@ void html_parser::add_text(std::string_view text) {
 
     const auto& parent = unfinished_.back();
 
-    auto new_node = std::make_unique<node>();
+    auto new_node = std::make_unique<html_node>();
     new_node->data = text_data{.text = std::string(text)};
     new_node->parent = parent.get();
 
@@ -63,15 +63,15 @@ void html_parser::add_tag(std::string_view raw_tag) {
     } else if (std::ranges::contains(self_closing_tags_, tag)) {
         const auto& parent = unfinished_.back();
 
-        auto new_node = std::make_unique<node>();
+        auto new_node = std::make_unique<html_node>();
         new_node->data = element_data{.tag = std::string(tag), .attributes = std::move(attributes)};
         new_node->parent = parent.get();
 
         parent->children.push_back(std::move(new_node));
     } else {
-        node* parent = unfinished_.empty() ? nullptr : unfinished_.back().get();
+        html_node* parent = unfinished_.empty() ? nullptr : unfinished_.back().get();
 
-        auto new_node = std::make_unique<node>();
+        auto new_node = std::make_unique<html_node>();
         new_node->data = element_data{.tag = std::string(tag), .attributes = std::move(attributes)};
         new_node->parent = parent;
 
@@ -150,7 +150,7 @@ void html_parser::implicit_tags(std::optional<std::string_view> tag) {
     }
 }
 
-std::unique_ptr<node> html_parser::finish() {
+std::unique_ptr<html_node> html_parser::finish() {
     if (unfinished_.empty()) return nullptr;
 
     implicit_tags();
