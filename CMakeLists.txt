@@ -21,6 +21,7 @@ add_executable(toy-browser
     src/block_layout.cpp
     src/html_parser.cpp
     src/document_layout.cpp
+    src/draw_commands.cpp
 )
 
 target_include_directories(toy-browser PRIVATE include)

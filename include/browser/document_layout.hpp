@@ -1,6 +1,7 @@
 #pragma once
 
 #include "block_layout.hpp"
+#include "browser/draw_commands.hpp"
 #include "html_parser.hpp"
 
 struct document_layout {
@@ -9,10 +10,7 @@ struct document_layout {
 
     void layout();
 
-    [[nodiscard]] const std::vector<render_item>& paint() const { return display_list_; };
-
-    // Should probably remove this function or go back to classes.
-    [[nodiscard]] const std::vector<render_item>& get_display_list() const { return display_list_; }
+    [[nodiscard]] const std::vector<draw_cmds>& paint() const { return display_list_; };
 
     [[nodiscard]] const std::vector<std::unique_ptr<block_layout>>& get_children() const {
         return children_;
@@ -34,5 +32,5 @@ struct document_layout {
     float x_{};
     float y_{};
 
-    std::vector<render_item> display_list_;
+    std::vector<draw_cmds> display_list_;
 };

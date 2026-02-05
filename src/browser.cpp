@@ -4,6 +4,8 @@
 #include <print>
 #include <variant>
 #include <vector>
+#include "browser/constants.hpp"
+#include "browser/draw_commands.hpp"
 #include "browser/html_parser.hpp"
 
 void print_tree(const node* n, int indent = 0) {
@@ -62,7 +64,7 @@ void print_layout_tree(const block_layout* layout, int indent = 0) {
     }
 }
 
-void paint_tree(const layout_parent& layout_object, std::vector<render_item>& display_list) {
+void paint_tree(const layout_parent& layout_object, std::vector<draw_cmds>& display_list) {
     display_list.append_range(std::visit([](auto&& arg) { return arg->paint(); }, layout_object));
 
     for (const auto& child : std::visit(
@@ -115,9 +117,16 @@ void browser::process_events() {
             needs_resize = true;
         } else if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
             if (keyPressed->code == sf::Keyboard::Key::Down) {
-                scroll_ += constants::scroll_step;
+                if (!document_) return;
+
+                float max_y = std::max(
+                    document_->height_ + 2 * constants::v_step -
+                        static_cast<float>(window_.getSize().y),
+                    0.0f
+                );
+                scroll_ = std::min(scroll_ + constants::scroll_step, max_y);
             } else if (keyPressed->code == sf::Keyboard::Key::Up) {
-                scroll_ -= constants::scroll_step;
+                scroll_ = std::max(0.f, scroll_ - constants::scroll_step);
             }
         }
     }
@@ -134,12 +143,15 @@ void browser::process_events() {
 void browser::render() {
     window_.clear(sf::Color::White);
 
-    for (auto& [x, y, word] : display_list_) {
-        if (y > scroll_ + static_cast<float>(window_.getSize().y)) continue;
-        if (y + constants::v_step < scroll_) continue;
-        word.setPosition({x, y - scroll_});
-        word.setFillColor(sf::Color::Black);
-        window_.draw(word);
+    for (auto& cmd : display_list_) {
+        std::visit(
+            [&](auto&& arg) {
+                if (arg.top_ > scroll_ + static_cast<float>(window_.getSize().y)) return;
+                if (arg.bottom_ < scroll_) return;
+                arg.execute(scroll_, window_);
+            },
+            cmd
+        );
     }
 
     window_.display();

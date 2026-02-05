@@ -1,10 +1,12 @@
 #include "browser/block_layout.hpp"
+#include <SFML/Graphics/Color.hpp>
 #include <algorithm>
 #include <memory>
 #include <ranges>
 #include <variant>
 #include "browser/constants.hpp"
 #include "browser/document_layout.hpp"  // IWYU pragma: keep
+#include "browser/draw_commands.hpp"
 #include "browser/html_parser.hpp"
 
 // No native way to get ascent of a word as of right now...
@@ -71,6 +73,26 @@ void block_layout::layout() {
 
         height_ = cursor_y_;
     }
+}
+
+std::vector<draw_cmds> block_layout::paint() {
+    std::vector<draw_cmds> cmds;
+
+    if (auto* el = std::get_if<element_data>(&node_->data)) {
+        if (el->tag == "pre") {
+            float x2 = x_ + width_;
+            float y2 = y_ + height_;
+            cmds.emplace_back(draw_rect(x_, y_, x2, y2, sf::Color::Cyan));
+        }
+    }
+
+    if (layout_mode() == "inline") {
+        for (const auto& [x, y, word] : display_list_) {
+            cmds.emplace_back(draw_text(x, y, word));
+        }
+    }
+
+    return cmds;
 }
 
 std::string_view block_layout::layout_mode() const {

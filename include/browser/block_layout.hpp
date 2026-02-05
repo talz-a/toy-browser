@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include "browser/constants.hpp"
+#include "browser/draw_commands.hpp"
 #include "browser/html_parser.hpp"
 
 class document_layout;
@@ -42,9 +43,8 @@ struct block_layout {
     [[nodiscard]] const node* get_node() const { return node_; }
 
     // Also the same as get_display_list...
-    [[nodiscard]] const std::vector<render_item>& paint() const { return display_list_; }
+    std::vector<draw_cmds> paint();
 
-    [[nodiscard]] const std::vector<render_item>& get_display_list() const { return display_list_; }
     [[nodiscard]] float get_height() const { return cursor_y_; }
 
     // Probably move this at some point.
