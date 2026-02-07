@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <memory>
 #include <ranges>
-#include <string_view>
 #include <variant>
 #include "browser/constants.hpp"
 #include "browser/document_layout.hpp"  // IWYU pragma: keep
