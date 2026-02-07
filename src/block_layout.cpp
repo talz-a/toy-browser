@@ -3,11 +3,13 @@
 #include <algorithm>
 #include <memory>
 #include <ranges>
+#include <string_view>
 #include <variant>
 #include "browser/constants.hpp"
 #include "browser/document_layout.hpp"  // IWYU pragma: keep
 #include "browser/draw_commands.hpp"
 #include "browser/html_parser.hpp"
+#include "browser/utils.hpp"
 
 // @HACK: No native way to get ascent of a word as of right now...
 float block_layout::get_ascent(const sf::Font& font, unsigned int size) const {
@@ -109,11 +111,22 @@ std::vector<draw_cmds> block_layout::paint() {
     std::vector<draw_cmds> cmds;
 
     if (auto* el = std::get_if<element_data>(&node_->data)) {
-        if (el->tag == "pre") {
+        // if (el->tag == "pre") {
+        //     float x2 = x_ + width_;
+        //     float y2 = y_ + height_;
+        //     constexpr auto gray = sf::Color{217, 217, 217};
+        //     cmds.emplace_back(draw_rect(x_, y_, x2, y2, gray));
+        // }
+
+        std::string bgcolor = "transparent";
+        if (node_->style.contains("background-color")) {
+            bgcolor = node_->style.at("background-color");
+        }
+
+        if (bgcolor != "transparent") {
             float x2 = x_ + width_;
             float y2 = y_ + height_;
-            constexpr auto gray = sf::Color{217, 217, 217};
-            cmds.emplace_back(draw_rect(x_, y_, x2, y2, gray));
+            cmds.emplace_back(draw_rect(x_, y_, x2, y2, parse_color(bgcolor)));
         }
     }
 

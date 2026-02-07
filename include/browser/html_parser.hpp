@@ -25,6 +25,9 @@ struct html_node {
     // later.
     std::vector<std::unique_ptr<html_node>> children;
 
+    // @Cleanup: Maybe move this to just element_data.
+    std::unordered_map<std::string, std::string> style;
+
     html_node* parent = nullptr;
 };
 

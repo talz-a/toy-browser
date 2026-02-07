@@ -5,6 +5,7 @@
 #include <variant>
 #include <vector>
 #include "browser/constants.hpp"
+#include "browser/css_parser.hpp"
 #include "browser/draw_commands.hpp"
 #include "browser/html_parser.hpp"
 
@@ -77,6 +78,24 @@ void paint_tree(const layout_parent& layout_object, std::vector<draw_cmds>& disp
     }
 }
 
+// @TODO: Move this to a better place.
+void style(html_node& node) {
+    node.style.clear();
+
+    auto* el = std::get_if<element_data>(&node.data);
+    if (el && el->attributes.contains("style")) {
+        auto pairs = css_parser(el->attributes["style"]).body();
+        for (const auto& [property, value] : pairs) {
+            std::println("Adding value {} {}", property, value);
+            node.style[property] = value;
+        }
+    }
+
+    for (const auto& child : node.children) {
+        if (child) style(*child);
+    }
+}
+
 browser::browser() : window_(sf::VideoMode({800, 600}), "Toy Browser") {
     if (!font_.openFromFile("assets/Inter-VariableFont.ttf")) {
         throw std::runtime_error("ERROR: No font loaded.");
@@ -86,6 +105,8 @@ browser::browser() : window_(sf::VideoMode({800, 600}), "Toy Browser") {
 void browser::load(const url& target_url) {
     const auto body = target_url.request();
     nodes_ = html_parser(body).parse();
+
+    style(*nodes_);
 
     // Debug print;
     // print_tree(nodes_.get());
