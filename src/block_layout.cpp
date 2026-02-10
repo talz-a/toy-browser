@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <browser/block_layout.hpp>
 #include <browser/constants.hpp>
-#include <browser/document_layout.hpp>  // IWYU pragma: keep
+#include <browser/document_layout.hpp>
 #include <browser/draw_commands.hpp>
 #include <browser/html_parser.hpp>
 #include <browser/utils.hpp>
