@@ -1,6 +1,6 @@
-#include "browser/document_layout.hpp"
-#include "browser/block_layout.hpp"
-#include "browser/constants.hpp"
+#include <browser/block_layout.hpp>
+#include <browser/constants.hpp>
+#include <browser/document_layout.hpp>
 
 void document_layout::layout() {
     width_ = width_ - 2 * constants::h_step;

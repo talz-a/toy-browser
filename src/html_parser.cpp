@@ -1,10 +1,10 @@
-#include "browser/html_parser.hpp"
 #include <algorithm>
+#include <browser/html_parser.hpp>
+#include <browser/utils.hpp>
 #include <ranges>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "browser/utils.hpp"
 
 std::unique_ptr<html_node> html_parser::parse() {
     std::string text;

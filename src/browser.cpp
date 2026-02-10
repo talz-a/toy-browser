@@ -1,13 +1,13 @@
-#include "browser/browser.hpp"
 #include <SFML/Graphics.hpp>
+#include <browser/browser.hpp>
+#include <browser/constants.hpp>
+#include <browser/css_parser.hpp>
+#include <browser/draw_commands.hpp>
+#include <browser/html_parser.hpp>
 #include <optional>
 #include <print>
 #include <variant>
 #include <vector>
-#include "browser/constants.hpp"
-#include "browser/css_parser.hpp"
-#include "browser/draw_commands.hpp"
-#include "browser/html_parser.hpp"
 
 void print_tree(const html_node* n, int indent = 0) {
     if (!n) return;

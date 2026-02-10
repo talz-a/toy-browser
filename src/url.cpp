@@ -1,5 +1,5 @@
-#include "browser/url.hpp"
 #include <openssl/ssl.h>
+#include <browser/url.hpp>
 #include <format>
 
 url::url(std::string_view url_string) {

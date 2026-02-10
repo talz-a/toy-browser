@@ -1,9 +1,9 @@
+#include <browser/browser.hpp>
+#include <browser/url.hpp>
 #include <iostream>
 #include <print>
 #include <span>
 #include <string_view>
-#include "browser/browser.hpp"
-#include "browser/url.hpp"
 
 int main(int argc, char* argv[]) {
     auto args = std::span(argv, size_t(argc));

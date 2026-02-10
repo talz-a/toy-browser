@@ -1,5 +1,5 @@
-#include "browser/draw_commands.hpp"
 #include <SFML/Graphics.hpp>
+#include <browser/draw_commands.hpp>
 
 void draw_text::execute(float scroll, sf::RenderWindow& window) {
     text_.setPosition({left_, top_ - scroll});

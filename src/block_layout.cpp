@@ -1,14 +1,14 @@
-#include "browser/block_layout.hpp"
 #include <SFML/Graphics/Color.hpp>
 #include <algorithm>
+#include <browser/block_layout.hpp>
+#include <browser/constants.hpp>
+#include <browser/document_layout.hpp>  // IWYU pragma: keep
+#include <browser/draw_commands.hpp>
+#include <browser/html_parser.hpp>
+#include <browser/utils.hpp>
 #include <memory>
 #include <ranges>
 #include <variant>
-#include "browser/constants.hpp"
-#include "browser/document_layout.hpp"  // IWYU pragma: keep
-#include "browser/draw_commands.hpp"
-#include "browser/html_parser.hpp"
-#include "browser/utils.hpp"
 
 // @HACK: No native way to get ascent of a word as of right now...
 float block_layout::get_ascent(const sf::Font& font, unsigned int size) const {

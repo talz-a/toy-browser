@@ -1,10 +1,10 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
-#include "browser/document_layout.hpp"
-#include "browser/draw_commands.hpp"
-#include "browser/html_parser.hpp"
-#include "browser/url.hpp"
+#include <browser/document_layout.hpp>
+#include <browser/draw_commands.hpp>
+#include <browser/html_parser.hpp>
+#include <browser/url.hpp>
 
 class browser {
 public:

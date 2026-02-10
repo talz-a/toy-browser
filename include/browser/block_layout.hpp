@@ -2,11 +2,11 @@
 
 #include <SFML/Graphics.hpp>
 #include <array>
+#include <browser/constants.hpp>
+#include <browser/draw_commands.hpp>
+#include <browser/html_parser.hpp>
 #include <string>
 #include <vector>
-#include "browser/constants.hpp"
-#include "browser/draw_commands.hpp"
-#include "browser/html_parser.hpp"
 
 struct render_item {
     float x{}, y{};

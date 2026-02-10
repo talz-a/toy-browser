@@ -1,8 +1,8 @@
 #pragma once
 
-#include "browser/block_layout.hpp"
-#include "browser/draw_commands.hpp"
-#include "html_parser.hpp"
+#include <browser/block_layout.hpp>
+#include <browser/draw_commands.hpp>
+#include <browser/html_parser.hpp>
 
 struct document_layout {
     document_layout(const html_node* n, const sf::Font& font, float width)
