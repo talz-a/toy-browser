@@ -90,7 +90,7 @@ std::optional<char> css_parser::ignore_until(const std::vector<char>& chars) {
 
 css_body css_parser::body() {
     std::unordered_map<std::string, std::string> pairs;
-    while (i_ < s_.size()) {
+    while (i_ < s_.size() && s_[i_] != '}') {
         try {
             auto [prop, val] = pair();
             pairs[prop] = val;
@@ -98,8 +98,8 @@ css_body css_parser::body() {
             literal(';');
             whitespace();
         } catch (const std::exception& e) {
-            auto why = ignore_until({'}'});
-            if (why == '}') {
+            auto why = ignore_until({';', '}'});
+            if (why == ';') {
                 literal('}');
                 whitespace();
             } else {
@@ -128,13 +128,23 @@ std::vector<css_rule> css_parser::parse() {
     std::vector<css_rule> rules;
 
     while (i_ < s_.size()) {
-        whitespace();
-        auto selector = selector_node();
-        literal('{');
-        whitespace();
-        auto css_body = body();
-        literal('}');
-        rules.emplace_back(std::move(selector), std::move(css_body));
+        try {
+            whitespace();
+            auto selector = selector_node();
+            literal('{');
+            whitespace();
+            auto css_body = body();
+            literal('}');
+            rules.emplace_back(std::move(selector), std::move(css_body));
+        } catch (const std::exception& e) {
+            auto why = ignore_until({'}'});
+            if (why == '}') {
+                literal('}');
+                whitespace();
+            } else {
+                break;
+            }
+        }
     }
 
     return rules;
