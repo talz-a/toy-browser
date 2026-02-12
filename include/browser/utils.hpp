@@ -21,6 +21,7 @@ inline sf::Color parse_color(const std::string& name) {
         {"blue", sf::Color::Blue},
         {"lightblue", sf::Color::Blue},
         {"black", sf::Color::Black},
+        {"gray", sf::Color(192, 192, 192)},
         {"white", sf::Color::White},
         {"yellow", sf::Color::Yellow},
         {"magenta", sf::Color::Magenta},

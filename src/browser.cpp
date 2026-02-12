@@ -4,8 +4,11 @@
 #include <browser/css_parser.hpp>
 #include <browser/draw_commands.hpp>
 #include <browser/html_parser.hpp>
+#include <fstream>
 #include <optional>
 #include <print>
+#include <sstream>
+#include <string>
 #include <variant>
 #include <vector>
 
@@ -79,8 +82,16 @@ void paint_tree(const layout_parent& layout_object, std::vector<draw_cmds>& disp
 }
 
 // @TODO: Move this to a better place.
-void style(html_node& node) {
+void style(html_node& node, const std::vector<css_rule>& rules) {
     node.style.clear();
+
+    for (const auto& [selector, body] : rules) {
+        if (!matches_any(selector, node)) {
+            for (const auto& [property, value] : body) {
+                node.style[property] = value;
+            }
+        }
+    }
 
     auto* el = std::get_if<element_data>(&node.data);
     if (el && el->attributes.contains("style")) {
@@ -92,7 +103,7 @@ void style(html_node& node) {
     }
 
     for (const auto& child : node.children) {
-        if (child) style(*child);
+        if (child) style(*child, rules);
     }
 }
 
@@ -102,11 +113,22 @@ browser::browser() : window_(sf::VideoMode({800, 600}), "Toy Browser") {
     }
 }
 
+std::string read_file(const std::string& path) {
+    std::ifstream file(path);
+    if (!file.is_open()) return {};
+    std::ostringstream ss;
+    ss << file.rdbuf();
+    return ss.str();
+}
+
 void browser::load(const url& target_url) {
     const auto body = target_url.request();
     nodes_ = html_parser(body).parse();
 
-    style(*nodes_);
+    std::string default_css = read_file("assets/browser.css");
+    auto default_style_sheet = css_parser(default_css).parse();
+
+    style(*nodes_, default_style_sheet);
 
     // Debug print;
     // print_tree(nodes_.get());

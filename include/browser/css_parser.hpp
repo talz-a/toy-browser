@@ -13,6 +13,8 @@ class descendant_selector;
 
 using selector = std::variant<tag_selector, std::unique_ptr<descendant_selector>>;
 
+bool matches_any(const selector& sel, const html_node& node);
+
 class tag_selector {
 public:
     explicit tag_selector(std::string_view tag) : tag_(tag) {}
