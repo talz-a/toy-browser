@@ -4,9 +4,11 @@
 #include <browser/css_parser.hpp>
 #include <browser/draw_commands.hpp>
 #include <browser/html_parser.hpp>
+#include <exception>
 #include <fstream>
 #include <optional>
 #include <print>
+#include <ranges>
 #include <sstream>
 #include <string>
 #include <variant>
@@ -86,8 +88,9 @@ void style(html_node& node, const std::vector<css_rule>& rules) {
     node.style.clear();
 
     for (const auto& [selector, body] : rules) {
-        if (!matches_any(selector, node)) {
+        if (matches_any(selector, node)) {
             for (const auto& [property, value] : body) {
+                std::println("adding this style {} {}", property, value);
                 node.style[property] = value;
             }
         }
@@ -121,14 +124,50 @@ std::string read_file(const std::string& path) {
     return ss.str();
 }
 
+// @TODO: This should be templated to work on both html and layout trees.
+// Also not really sure why this takes the list as a param and does not just return one?
+void tree_to_list(html_node& tree, std::vector<html_node*>& list) {
+    list.push_back(&tree);
+    for (const auto& child : tree.children) {
+        tree_to_list(*child, list);
+    }
+}
+
 void browser::load(const url& target_url) {
     const auto body = target_url.request();
     nodes_ = html_parser(body).parse();
 
     std::string default_css = read_file("assets/browser.css");
-    auto default_style_sheet = css_parser(default_css).parse();
+    std::vector<css_rule> css_rules = css_parser(default_css).parse();
 
-    style(*nodes_, default_style_sheet);
+    std::vector<html_node*> node_list;
+    tree_to_list(*nodes_, node_list);
+
+    std::vector<std::string> links;
+    for (const auto& node : node_list) {
+        auto* el = std::get_if<element_data>(&node->data);
+        if (el && el->tag == "link") {
+            auto it_rel = el->attributes.find("rel");
+            auto it_href = el->attributes.find("href");
+            if (it_rel != el->attributes.end() && it_rel->second == "stylesheet" &&
+                it_href != el->attributes.end()) {
+                links.push_back(it_href->second);
+            }
+        }
+    }
+
+    for (const auto& link : links) {
+        auto style_url = target_url.resolve(link);
+        try {
+            auto request_body = style_url.request();
+            std::vector<css_rule> new_rules = css_parser(request_body).parse();
+            css_rules.append_range(new_rules | std::views::as_rvalue);
+        } catch (const std::exception& e) {
+            continue;
+        }
+    }
+
+    style(*nodes_, css_rules);
 
     // Debug print;
     // print_tree(nodes_.get());

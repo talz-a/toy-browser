@@ -11,6 +11,8 @@ public:
 
     [[nodiscard]] std::string request() const;
 
+    [[nodiscard]] url resolve(std::string_view url_string) const;
+
 private:
     template <typename Stream>
     std::string send_request(Stream& stream, const std::string& request_text) const {

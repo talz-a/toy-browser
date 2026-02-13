@@ -61,3 +61,44 @@ std::string url::request() const {
     asio::connect(socket, endpoints);
     return send_request(socket, request_text);
 }
+
+url url::resolve(std::string_view url_string) const {
+    // Case 1: Absolute URL (e.g., "https://google.com/logo.png")
+    if (url_string.contains("://")) {
+        return url(url_string);
+    }
+
+    std::string path_buffer{url_string};
+
+    // Case 2: Path-relative URL (e.g., "styles.css" or "../images/icon.png")
+    // If it doesn't start with "/", it's relative to the current directory.
+    if (!path_buffer.starts_with("/")) {
+        size_t last_slash = path_.rfind('/');
+        std::string_view dir = (last_slash == std::string_view::npos)
+                                   ? ""
+                                   : std::string_view(path_).substr(0, last_slash);
+
+        while (path_buffer.starts_with("../")) {
+            path_buffer = path_buffer.substr(3);
+            if (dir.contains('/')) {
+                size_t prev_dir = dir.rfind('/');
+                dir = dir.substr(0, prev_dir);
+            } else {
+                dir = "";  // We hit the root.
+            }
+        }
+
+        path_buffer = std::string(dir) + "/" + path_buffer;
+    }
+
+    // Case 3: Scheme-relative URL (e.g., "//cdn.example.com/lib.js")
+    if (path_buffer.starts_with("//")) {
+        return url(scheme_ + ":" + path_buffer);
+    }
+    // Case 4: Host-relative URL (e.g., "/top-level-style.css")
+    // Keep scheme, host, and port, but replace the path entirely.
+    else {
+        std::string full_url = scheme_ + "://" + host_ + ":" + std::to_string(port_) + path_buffer;
+        return url(full_url);
+    }
+}
