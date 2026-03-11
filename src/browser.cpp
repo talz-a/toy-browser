@@ -1,40 +1,33 @@
-#include <SFML/Graphics.hpp>
 #include <browser/browser.hpp>
 #include <browser/constants.hpp>
 #include <browser/css_parser.hpp>
 #include <browser/draw_commands.hpp>
 #include <browser/html_parser.hpp>
+#include <SFML/Graphics.hpp>
 #include <exception>
-#include <fstream>
 #include <optional>
 #include <print>
+#include <iostream>
 #include <ranges>
-#include <sstream>
 #include <string>
 #include <variant>
 #include <vector>
 
-void print_tree(const html_node* n, int indent = 0) {
-    if (!n) return;
-
+void print_tree(const HTMLNode& n, int indent = 0) {
     std::string_view current_tag;
 
-    std::visit(
-        [&](auto&& arg) {
-            using T = std::decay_t<decltype(arg)>;
-            std::print("{:>{}}", "", indent);
-            if constexpr (std::is_same_v<T, text_data>) {
-                std::println("{}", arg.text);
-            } else if constexpr (std::is_same_v<T, element_data>) {
-                std::println("<{}>", arg.tag);
-                current_tag = arg.tag;
-            }
-        },
-        n->data
-    );
+    std::visit([&]<typename T>(const T& arg) {
+        std::print("{:>{}}", "", indent);
+        if constexpr (std::is_same_v<T, Text>) {
+            std::println("{}", arg.text);
+        } else if constexpr (std::is_same_v<T, Element>) {
+            std::println("<{}>", arg.tag);
+            current_tag = arg.tag;
+        }
+    }, n.data);
 
-    for (const auto& child : n->children) {
-        print_tree(child.get(), indent + 2);
+    for (const auto& child : n.children) {
+        if (child) print_tree(*child, indent + 2); 
     }
 
     if (!current_tag.empty()) {
@@ -43,30 +36,24 @@ void print_tree(const html_node* n, int indent = 0) {
     }
 }
 
-void print_layout_tree(const block_layout* layout, int indent = 0) {
-    if (!layout) return;
-
+void print_layout_tree(const block_layout& layout, int indent = 0) {
     std::print("{:>{}}", "", indent);
     std::print("BlockLayout");
 
-    const html_node* n = layout->node_;
-    std::visit(
-        [&](auto&& arg) {
-            using T = std::decay_t<decltype(arg)>;
-            if constexpr (std::is_same_v<T, element_data>) {
-                std::print(" (<{}>)", arg.tag);
-            } else if constexpr (std::is_same_v<T, text_data>) {
-                std::string snippet = arg.text.substr(0, 20);
-                std::print(" (\"{}...\")", snippet);
-            }
-        },
-        n->data
-    );
+    const HTMLNode* n = layout.node_;
+    std::visit([&]<typename T>(const T& arg) {
+        if constexpr (std::is_same_v<T, Element>) {
+            std::print(" (<{}>)", arg.tag);
+        } else if constexpr (std::is_same_v<T, Text>) {
+            std::string snippet = arg.text.substr(0, 20);
+            std::print(" (\"{}...\")", snippet);
+        }
+    }, n->data);
 
     std::println("");
 
-    for (const auto& child : layout->children_) {
-        print_layout_tree(child.get(), indent + 2);
+    for (const auto& child : layout.children_) {
+        if (child) print_layout_tree(*child, indent + 2);
     }
 }
 
@@ -84,23 +71,23 @@ void paint_tree(const layout_parent& layout_object, std::vector<draw_cmds>& disp
 }
 
 // @TODO: Move this to a better place.
-void style(html_node& node, const std::vector<css_rule>& rules) {
+void style(HTMLNode& node, const std::vector<CSSRule>& rules) {
     node.style.clear();
 
     for (const auto& [selector, body] : rules) {
         if (matches_any(selector, node)) {
             for (const auto& [property, value] : body) {
-                std::println("adding this style {} {}", property, value);
+                // std::println("DEBUG: Adding style {} {}.", property, value);
                 node.style[property] = value;
             }
         }
     }
 
-    auto* el = std::get_if<element_data>(&node.data);
+    auto* el = std::get_if<Element>(&node.data);
     if (el && el->attributes.contains("style")) {
-        auto pairs = css_parser(el->attributes["style"]).body();
+        auto pairs = CSSParser(el->attributes["style"]).body();
         for (const auto& [property, value] : pairs) {
-            std::println("Adding value {} {}", property, value);
+            // std::println("DEBUG: Adding style {} {}.", property, value);
             node.style[property] = value;
         }
     }
@@ -110,42 +97,38 @@ void style(html_node& node, const std::vector<css_rule>& rules) {
     }
 }
 
-browser::browser() : window_(sf::VideoMode({800, 600}), "Toy Browser") {
-    if (!font_.openFromFile("assets/Inter-VariableFont.ttf")) {
-        throw std::runtime_error("ERROR: No font loaded.");
-    }
-}
-
-std::string read_file(const std::string& path) {
-    std::ifstream file(path);
-    if (!file.is_open()) return {};
-    std::ostringstream ss;
-    ss << file.rdbuf();
-    return ss.str();
-}
-
 // @TODO: This should be templated to work on both html and layout trees.
 // Also not really sure why this takes the list as a param and does not just return one?
-void tree_to_list(html_node& tree, std::vector<html_node*>& list) {
+void tree_to_list(HTMLNode& tree, std::vector<HTMLNode*>& list) {
     list.push_back(&tree);
     for (const auto& child : tree.children) {
         tree_to_list(*child, list);
     }
 }
 
-void browser::load(const url& target_url) {
-    const auto body = target_url.request();
-    nodes_ = html_parser(body).parse();
+Browser::Browser() : window_(sf::VideoMode({800, 600}), "Toy Browser") {
+    if (!font_.openFromFile("assets/Inter-VariableFont.ttf")) {
+        // It is okay to throw here since this is a fatal error.
+        throw std::runtime_error("ERROR: No font loaded.");
+    }
+}
+
+std::expected<void, std::string> Browser::load(const Url& url) {
+    const auto body = url.request();
+    
+    if (!body) return std::unexpected(body.error());
+
+    nodes_ = HTMLParser(body.value()).parse();
 
     std::string default_css = read_file("assets/browser.css");
-    std::vector<css_rule> css_rules = css_parser(default_css).parse();
+    std::vector<CSSRule> css_rules = CSSParser{.s_= default_css}.parse();
 
-    std::vector<html_node*> node_list;
+    std::vector<HTMLNode*> node_list;
     tree_to_list(*nodes_, node_list);
 
     std::vector<std::string> links;
     for (const auto& node : node_list) {
-        auto* el = std::get_if<element_data>(&node->data);
+        auto* el = std::get_if<Element>(&node->data);
         if (el && el->tag == "link") {
             auto it_rel = el->attributes.find("rel");
             auto it_href = el->attributes.find("href");
@@ -157,20 +140,30 @@ void browser::load(const url& target_url) {
     }
 
     for (const auto& link : links) {
-        auto style_url = target_url.resolve(link);
-        try {
-            auto request_body = style_url.request();
-            std::vector<css_rule> new_rules = css_parser(request_body).parse();
-            css_rules.append_range(new_rules | std::views::as_rvalue);
-        } catch (const std::exception& e) {
+        auto style_url = url.resolve(link);
+
+        if (!style_url) {
+            std::println(std::cerr, "Failed to fetch stylesheet: {}", style_url.error());
             continue;
-        }
+        } 
+
+        auto request_body = style_url.value().request();
+
+        if (!request_body) {
+            std::println(std::cerr, "Failed to load stylesheet: {}", request_body.error());
+            continue;
+        } 
+
+        std::vector<CSSRule> new_rules = CSSParser(request_body.value()).parse();
+        for (auto& rule : new_rules) {
+            css_rules.push_back(std::move(rule));
+        } 
     }
 
     style(*nodes_, css_rules);
 
     // Debug print;
-    // print_tree(nodes_.get());
+    // print_tree(*nodes_);
 
     document_.emplace(
         document_layout(nodes_.get(), font_, static_cast<float>(window_.getSize().x))
@@ -179,16 +172,19 @@ void browser::load(const url& target_url) {
     document_->layout();
 
     // Debug print;
-    // print_layout_tree(document_->children_.empty() ? nullptr :
-    // document_->children_.front().get());
+    // if (!document_->children_.empty()) {
+    //     print_layout_tree(*document_->children_.front());
+    // }
 
     display_list_.clear();
     paint_tree(&*document_, display_list_);
 
     run();
+
+    return {};
 }
 
-void browser::process_events() {
+void Browser::process_events() {
     bool needs_resize = false;
 
     while (const std::optional event = window_.pollEvent()) {
@@ -199,18 +195,16 @@ void browser::process_events() {
                 {0.f, 0.f},
                 {static_cast<float>(resized->size.x), static_cast<float>(resized->size.y)}
             );
+
             window_.setView(sf::View(visibleArea));
             needs_resize = true;
         } else if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
             if (keyPressed->code == sf::Keyboard::Key::Down) {
                 if (!document_) return;
 
-                float max_y = std::max(
-                    document_->height_ + 2 * constants::v_step -
-                        static_cast<float>(window_.getSize().y),
-                    0.0f
-                );
+                float max_y = std::max( document_->height_ + 2 * constants::v_step - static_cast<float>(window_.getSize().y), 0.0f);
                 scroll_ = std::min(scroll_ + constants::scroll_step, max_y);
+
             } else if (keyPressed->code == sf::Keyboard::Key::Up) {
                 scroll_ = std::max(0.f, scroll_ - constants::scroll_step);
             }
@@ -227,7 +221,7 @@ void browser::process_events() {
     }
 }
 
-void browser::render() {
+void Browser::render() {
     window_.clear(sf::Color::White);
 
     for (auto& cmd : display_list_) {
@@ -244,7 +238,7 @@ void browser::render() {
     window_.display();
 }
 
-void browser::run() {
+void Browser::run() {
     while (window_.isOpen()) {
         process_events();
         render();

@@ -7,54 +7,49 @@
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+#include <expected>
 
-class tag_selector;
-class descendant_selector;
+class TagSelector;
+class DescendantSelector;
 
-using selector = std::variant<tag_selector, std::unique_ptr<descendant_selector>>;
+using Selector = std::variant<TagSelector, std::unique_ptr<DescendantSelector>>;
+using CSSPair = std::pair<std::string, std::string>;
 
-bool matches_any(const selector& sel, const html_node& node);
+bool matches_any(const Selector& sel, const HTMLNode& node);
 
-class tag_selector {
-public:
-    explicit tag_selector(std::string_view tag) : tag_(tag) {}
-
-    [[nodiscard]] bool matches(const html_node& node) const;
-
-private:
+struct TagSelector {
     std::string tag_;
+
+    [[nodiscard]] bool matches(const HTMLNode& node) const;
 };
 
-class descendant_selector {
-public:
-    descendant_selector(selector ancestor, tag_selector descendant)
-        : ancestor_(std::move(ancestor)), descendant_(std::move(descendant)) {}
+struct DescendantSelector {
+    Selector ancestor_;
+    TagSelector descendant_;
 
-    [[nodiscard]] bool matches(const html_node& node) const;
-
-private:
-    selector ancestor_;
-    tag_selector descendant_;
+    [[nodiscard]] bool matches(const HTMLNode& node) const;
 };
 
-using css_body = std::unordered_map<std::string, std::string>;
-using css_rule = std::pair<selector, css_body>;
+using CSSBody = std::unordered_map<std::string, std::string>;
+using CSSRule = std::pair<Selector, CSSBody>;
 
-class css_parser {
-public:
-    explicit css_parser(std::string_view s) : s_{s} {}
-
+struct CSSParser {
     void whitespace();
-    std::string_view word();
-    void literal(char ch);
-    selector selector_node();
-    std::vector<css_rule> parse();
 
-    std::pair<std::string, std::string> pair();
-    css_body body();
+    std::expected<std::string_view, std::string> word();
+
+    std::expected<void, std::string> literal(char ch);
+
+    std::expected<CSSPair, std::string> pair();
+
     std::optional<char> ignore_until(const std::vector<char>& chars);
 
-private:
+    CSSBody body();
+
+    std::expected<Selector, std::string> selector_node();
+
+    std::vector<CSSRule> parse();
+
     std::string_view s_;
     std::size_t i_ = 0;
 };

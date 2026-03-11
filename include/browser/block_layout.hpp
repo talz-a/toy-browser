@@ -30,7 +30,7 @@ using layout_parent = std::variant<document_layout*, block_layout*>;
 
 struct block_layout {
     block_layout(
-        const html_node* n,
+        const HTMLNode* n,
         layout_parent parent,
         const block_layout* previous,
         const sf::Font& font,
@@ -48,14 +48,14 @@ struct block_layout {
 
     [[nodiscard]] layout_mode get_layout_mode() const;
 
-    void recurse(const html_node* node);
+    void recurse(const HTMLNode* node);
 
-    void open_tag(const element_data& element);
-    void close_tag(const element_data& element);
+    void open_tag(const Element& element);
+    void close_tag(const Element& element);
 
     void word(const std::string& word);
 
-    const html_node* node_;
+    const HTMLNode* node_;
     layout_parent parent_;
     const block_layout* previous_ = nullptr;
     float width_;

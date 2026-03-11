@@ -5,14 +5,14 @@
 #include <browser/html_parser.hpp>
 
 struct document_layout {
-    document_layout(const html_node* n, const sf::Font& font, float width)
+    document_layout(const HTMLNode* n, const sf::Font& font, float width)
         : node_{n}, font_{&font}, width_{width} {}
 
     void layout();
 
     [[nodiscard]] std::vector<draw_cmds> paint() const { return display_list_; };
 
-    const html_node* node_;
+    const HTMLNode* node_;
     const block_layout* parent_ = nullptr;
     float width_;
 

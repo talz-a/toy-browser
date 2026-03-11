@@ -5,15 +5,14 @@
 #include <browser/draw_commands.hpp>
 #include <browser/html_parser.hpp>
 #include <browser/url.hpp>
+#include <expected>
 
-class browser {
-public:
-    browser();
+struct Browser {
+    Browser();
 
-    void load(const url& target_url);
+    std::expected<void, std::string> load(const Url& target_url);
+
     void run();
-
-private:
     void process_events();
     void render();
 
@@ -22,5 +21,5 @@ private:
     sf::RenderWindow window_;
     sf::Font font_;
     std::vector<draw_cmds> display_list_;
-    std::unique_ptr<html_node> nodes_;
+    std::unique_ptr<HTMLNode> nodes_;
 };

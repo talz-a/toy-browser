@@ -9,73 +9,75 @@
 #include <variant>
 #include <vector>
 
-struct text_data {
+using namespace std::literals; 
+
+constexpr std::array SELF_CLOSING_TAGS = {
+    "area"sv,
+    "base"sv,
+    "br"sv,
+    "col"sv,
+    "embed"sv,
+    "hr"sv,
+    "img"sv,
+    "input"sv,
+    "link"sv,
+    "meta"sv,
+    "param"sv,
+    "source"sv,
+    "track"sv,
+    "wbr"sv
+};
+
+constexpr std::array HEAD_TAGS = {
+    "base"sv,
+    "basefont"sv,
+    "bgsound"sv,
+    "noscript"sv,
+    "link"sv,
+    "meta"sv,
+    "title"sv,
+    "style"sv,
+    "script"sv
+};
+
+using Attributes = std::unordered_map<std::string, std::string>;
+using Tag = std::string;
+
+struct Text {
     std::string text;
 };
 
-struct element_data {
-    std::string tag;
-    std::unordered_map<std::string, std::string> attributes;
+struct Element {
+    Tag tag;
+    Attributes attributes;
 };
 
-struct html_node {
-    std::variant<text_data, element_data> data;
+struct HTMLNode {
+    std::variant<Text, Element> data;
 
-    // @TODO: Text nodes don't have children but is here for simplificaiton. Maybe remove this
-    // later.
-    std::vector<std::unique_ptr<html_node>> children;
+    // @TODO: Text nodes don't have children but is here for simplificaiton. Maybe remove this later.
+    std::vector<std::unique_ptr<HTMLNode>> children;
 
-    // @Cleanup: Maybe move this to just element_data.
-    std::unordered_map<std::string, std::string> style;
+    // @TODO: Maybe move this to just element_data.
+    Attributes style;
 
-    html_node* parent = nullptr;
+    HTMLNode* parent = nullptr;
 };
 
-class html_parser {
-public:
-    explicit html_parser(std::string_view body) : body_{body} {}
+struct HTMLParser {
+    explicit HTMLParser(std::string_view body) : body_{body} {}
 
-    [[nodiscard]] std::unique_ptr<html_node> parse();
+    [[nodiscard]] std::unique_ptr<HTMLNode> parse();
 
-private:
     void add_text(std::string_view text);
     void add_tag(std::string_view raw_tag);
 
-    [[nodiscard]] static std::pair<std::string, std::unordered_map<std::string, std::string>>
-    get_attributes(std::string_view text);
-
     void implicit_tags(std::optional<std::string_view> tag = std::nullopt);
 
-    [[nodiscard]] std::unique_ptr<html_node> finish();
+    [[nodiscard]] std::unique_ptr<HTMLNode> finish();
+
+    [[nodiscard]] static std::pair<Tag, Attributes> parse_attributes(std::string_view text);
 
     std::string_view body_;
-    std::vector<std::unique_ptr<html_node>> unfinished_;
-
-    static constexpr auto self_closing_tags_ = std::to_array(
-        {"area",
-         "base",
-         "br",
-         "col",
-         "embed",
-         "hr",
-         "img",
-         "input",
-         "link",
-         "meta",
-         "param",
-         "source",
-         "track",
-         "wbr"}
-    );
-    static constexpr auto head_tags_ = std::to_array({
-        "base",
-        "basefont",
-        "bgsound",
-        "noscript",
-        "link",
-        "meta",
-        "title",
-        "style",
-        "script",
-    });
+    std::vector<std::unique_ptr<HTMLNode>> unfinished_;
 };

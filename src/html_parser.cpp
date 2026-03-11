@@ -1,12 +1,12 @@
-#include <algorithm>
 #include <browser/html_parser.hpp>
 #include <browser/utils.hpp>
+#include <algorithm>
 #include <ranges>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-std::unique_ptr<html_node> html_parser::parse() {
+std::unique_ptr<HTMLNode> HTMLParser::parse() {
     std::string text;
     bool in_tag = false;
 
@@ -28,8 +28,9 @@ std::unique_ptr<html_node> html_parser::parse() {
     return finish();
 }
 
-void html_parser::add_text(std::string_view text) {
-    if (text == " ") return;
+void HTMLParser::add_text(std::string_view text) {
+    auto is_space = [](unsigned char c) { return std::isspace(c); };
+    if (std::ranges::all_of(text, is_space)) return;
 
     implicit_tags();
 
@@ -37,21 +38,22 @@ void html_parser::add_text(std::string_view text) {
 
     const auto& parent = unfinished_.back();
 
-    auto new_node = std::make_unique<html_node>();
-    new_node->data = text_data{.text = std::string(text)};
+    auto new_node = std::make_unique<HTMLNode>();
+    new_node->data = Text{.text = std::string(text)};
     new_node->parent = parent.get();
 
     parent->children.push_back(std::move(new_node));
 }
 
-void html_parser::add_tag(std::string_view raw_tag) {
-    auto [tag, attributes] = get_attributes(raw_tag);
+void HTMLParser::add_tag(std::string_view raw_tag) {
+    auto [tag, attributes] = parse_attributes(raw_tag);
 
     if (tag.starts_with('!')) return;
 
     implicit_tags(tag);
 
     if (tag.starts_with('/')) {
+        // Protect root node.
         if (unfinished_.size() == 1) return;
 
         auto node = std::move(unfinished_.back());
@@ -60,68 +62,93 @@ void html_parser::add_tag(std::string_view raw_tag) {
         const auto& parent = unfinished_.back();
         parent->children.push_back(std::move(node));
 
-    } else if (std::ranges::contains(self_closing_tags_, tag)) {
+    } else if (std::ranges::contains(SELF_CLOSING_TAGS, tag)) {
         const auto& parent = unfinished_.back();
 
-        auto new_node = std::make_unique<html_node>();
-        new_node->data = element_data{.tag = std::string(tag), .attributes = std::move(attributes)};
+        auto new_node = std::make_unique<HTMLNode>();
+        new_node->data = Element{.tag = std::string(tag), .attributes = std::move(attributes)};
         new_node->parent = parent.get();
 
         parent->children.push_back(std::move(new_node));
     } else {
-        html_node* parent = unfinished_.empty() ? nullptr : unfinished_.back().get();
+        HTMLNode* parent = unfinished_.empty() ? nullptr : unfinished_.back().get();
 
-        auto new_node = std::make_unique<html_node>();
-        new_node->data = element_data{.tag = std::string(tag), .attributes = std::move(attributes)};
+        auto new_node = std::make_unique<HTMLNode>();
+        new_node->data = Element{.tag = std::string(tag), .attributes = std::move(attributes)};
         new_node->parent = parent;
 
         unfinished_.push_back(std::move(new_node));
     }
 }
 
-std::pair<std::string, std::unordered_map<std::string, std::string>> html_parser::get_attributes(
-    std::string_view text
-) {
-    const auto parts = text | std::views::split(' ') | std::ranges::to<std::vector<std::string>>();
+std::pair<Tag, Attributes> HTMLParser::parse_attributes(std::string_view text) {
+    Attributes attributes;
+    if (text.empty()) return {"", attributes};
 
-    if (parts.empty()) return {"", {}};
+    auto is_space = [](unsigned char c) { return std::isspace(c); };
 
-    const auto tag = to_lower(parts[0]);
+    // 1. Extract the tag name.
+    auto tag_end = std::ranges::find_if(text, is_space);
+    std::string tag = to_lower(std::string_view(text.begin(), tag_end));
+    
+    text = std::string_view(tag_end, text.end());
 
-    std::unordered_map<std::string, std::string> attributes;
-    for (const auto& attrpair : parts | std::views::drop(1)) {
-        if (attrpair.contains('=')) {
-            const auto pos = attrpair.find('=');
-            const auto key = attrpair.substr(0, pos);
-            auto value = attrpair.substr(pos + 1);
+    // 2. Parse the attributes.
+    while (!text.empty()) {
+        // Drop leading whitespace.
+        text = std::string_view(std::ranges::find_if_not(text, is_space), text.end());
+        if (text.empty()) break;
 
-            if (value.size() > 2) {
-                char first = value.front();
-                char last = value.back();
+        // Find the end of the key.
+        auto key_end = std::ranges::find_if(text, [](unsigned char c) {
+            return std::isspace(c) || c == '=';
+        });
+        
+        std::string key = to_lower(std::string_view(text.begin(), key_end));
+        text = std::string_view(key_end, text.end());
 
-                if ((first == '"' || first == '\'') && first == last) {
-                    value = value.substr(1, value.size() - 2);
-                }
+        std::string value;
+        
+        // If there's an '=', parse the value.
+        if (!text.empty() && text.front() == '=') {
+            // Drop the '='.
+            text.remove_prefix(1);
+            
+            if (!text.empty() && (text.front() == '"' || text.front() == '\'')) {
+                const char quote = text.front();
+                text.remove_prefix(1); // Drop opening quote.
+                
+                auto val_end = std::ranges::find(text, quote);
+                value = std::string(text.begin(), val_end);
+                
+                text = std::string_view(val_end, text.end());
+                if (!text.empty()) text.remove_prefix(1); // Drop closing quote.
+            } else {
+                // Unquoted value.
+                auto val_end = std::ranges::find_if(text, is_space);
+                value = std::string(text.begin(), val_end);
+                text = std::string_view(val_end, text.end());
             }
+        }
 
-            attributes.emplace(to_lower(key), value);
-        } else {
-            attributes.emplace(to_lower(attrpair), "");
+        if (!key.empty()) {
+            attributes.emplace(std::move(key), std::move(value));
         }
     }
 
-    return {tag, attributes};
+    return {std::move(tag), std::move(attributes)};
 }
 
-void html_parser::implicit_tags(std::optional<std::string_view> tag) {
+void HTMLParser::implicit_tags(std::optional<std::string_view> tag) {
     while (true) {
-        const auto open_tags = unfinished_ | std::views::filter([](const auto& node) {
-                                   return std::holds_alternative<element_data>(node->data);
-                               }) |
-                               std::views::transform([](const auto& node) -> std::string_view {
-                                   return std::get<element_data>(node->data).tag;
-                               }) |
-                               std::ranges::to<std::vector<std::string_view>>();
+        const auto open_tags = unfinished_ 
+                               | std::views::filter([](auto&& node) {
+                                   return std::holds_alternative<Element>(node->data);
+                               }) 
+                               | std::views::transform([](auto&& node) {
+                                   return std::get<Element>(node->data).tag;
+                               }) 
+                               | std::ranges::to<std::vector>();
 
         // 1. If empty and first tag isn't <html>, add <html>.
         if (open_tags.empty() && tag != "html") {
@@ -131,16 +158,16 @@ void html_parser::implicit_tags(std::optional<std::string_view> tag) {
         // 2. If we only have <html>, decide between <head> and <body>.
         else if (open_tags.size() == 1 && open_tags[0] == "html" && tag != "head" &&
                  tag != "body" && tag != "/html") {
-            if (tag.has_value() && std::ranges::contains(head_tags_, *tag)) {
+            if (tag.has_value() && std::ranges::contains(HEAD_TAGS, *tag)) {
                 add_tag("head");
             } else {
                 add_tag("body");
             }
         }
 
-        // 3. If in <head> and a body-tag arrives, close the <head>.
+        // 3. If in <head> and a body-tag (or text node) arrives, close the <head>.
         else if (open_tags.size() == 2 && open_tags[0] == "html" && open_tags[1] == "head" &&
-                 tag != "/head" && (tag.has_value() && !std::ranges::contains(head_tags_, *tag))) {
+                 tag != "/head" && (!tag.has_value() || !std::ranges::contains(HEAD_TAGS, *tag))) {
             add_tag("/head");
         }
 
@@ -150,10 +177,8 @@ void html_parser::implicit_tags(std::optional<std::string_view> tag) {
     }
 }
 
-std::unique_ptr<html_node> html_parser::finish() {
-    if (unfinished_.empty()) return nullptr;
-
-    implicit_tags();
+std::unique_ptr<HTMLNode> HTMLParser::finish() {
+    if (unfinished_.empty()) implicit_tags();
 
     while (unfinished_.size() > 1) {
         auto node = std::move(unfinished_.back());

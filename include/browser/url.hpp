@@ -1,78 +1,85 @@
 #pragma once
 
+#include <browser/utils.hpp>
 #include <asio.hpp>
 #include <asio/ssl.hpp>
-#include <browser/utils.hpp>
 #include <string_view>
+#include <expected>
 
-class url {
-public:
-    explicit url(std::string_view url_string);
+static constexpr uint16_t HTTP_PORT = 80;
+static constexpr uint16_t HTTPS_PORT = 443;
 
-    [[nodiscard]] std::string request() const;
+struct Url {
+    [[nodiscard]] static std::expected<Url, std::string> parse_url(std::string_view url);
 
-    [[nodiscard]] url resolve(std::string_view url_string) const;
+    [[nodiscard]] std::expected<std::string, std::string> request() const;
 
-private:
+    [[nodiscard]] std::expected<Url, std::string> resolve(std::string_view url) const;
+
     template <typename Stream>
-    std::string send_request(Stream& stream, const std::string& request_text) const {
-        asio::write(stream, asio::buffer(request_text));
+    std::expected<std::string, std::string> send_request(Stream& stream, std::string_view request_text) const {
+        asio::error_code ec;
+
+        asio::write(stream, asio::buffer(request_text), ec);
+        if (ec) {
+            return std::unexpected(std::format("ERROR: Write failed: {}.", ec.message()));
+        }
 
         asio::streambuf response_buffer;
-        asio::read_until(stream, response_buffer, "\r\n");
+        asio::read_until(stream, response_buffer, "\r\n\r\n", ec);
+        if (ec) {
+            return std::unexpected(std::format("ERROR: Header read failed: {}.", ec.message()));
+        }
 
         std::istream response_stream(&response_buffer);
         std::string status_line;
-        std::getline(response_stream, status_line);
+        if (!std::getline(response_stream, status_line)) {
+            return std::unexpected("ERROR: Empty response from server.");
+        }
+
         if (!status_line.empty() && status_line.back() == '\r') status_line.pop_back();
 
         std::unordered_map<std::string, std::string> response_headers;
-        while (true) {
-            std::string line;
-            std::getline(response_stream, line);
+        std::string line;
+        while (std::getline(response_stream, line) && line != "\r" && !line.empty()) {
+            if (line.back() == '\r') line.pop_back();
 
-            if (!line.empty() && line.back() == '\r') line.pop_back();
-            if (line.empty()) break;
+            const size_t colon_pos = line.find(':');
+            if (colon_pos != std::string::npos) {
+                std::string header = to_lower(line.substr(0, colon_pos));
+                std::string value = line.substr(colon_pos + 1);
 
-            if (const auto colon = line.find(':'); colon != std::string::npos) {
-                std::string header = to_lower(line.substr(0, colon));
-                std::string raw_value = line.substr(colon + 1);
+                // Trim whitespace.
+                value.erase(0, value.find_first_not_of(" \t"));
+                auto last = value.find_last_not_of(" \t");
+                if (last != std::string::npos) value.erase(last + 1);
 
-                std::string_view sv = raw_value;
-                while (!sv.empty() && std::isspace(static_cast<unsigned char>(sv.front()))) {
-                    sv.remove_prefix(1);
-                }
-
-                while (!sv.empty() && std::isspace(static_cast<unsigned char>(sv.back()))) {
-                    sv.remove_suffix(1);
-                }
-
-                response_headers[header] = std::string(sv);
+                response_headers[header] = value;
             }
         }
 
         if (response_headers.contains("transfer-encoding")) {
-            throw std::runtime_error("ERROR: Transfer-Encoding is not supported.");
+            return std::unexpected("ERROR: Transfer-Encoding (chunked) is not supported.");
         }
 
         if (response_headers.contains("content-encoding")) {
-            throw std::runtime_error("ERROR: Content-Encoding is not supported.");
+            return std::unexpected("ERROR: Content-Encoding (compression) is not supported.");
         }
 
-        asio::error_code ec;
         asio::read(stream, response_buffer, asio::transfer_all(), ec);
 
-        if (ec && ec != asio::error::eof) throw std::system_error(ec);
+        if (ec && ec != asio::error::eof && ec != asio::ssl::error::stream_truncated) {
+            return std::unexpected(std::format("ERROR: Body read failed: {}.", ec.message()));
+        }
 
         return std::string{
-            asio::buffers_begin(response_buffer.data()), asio::buffers_end(response_buffer.data())
+            asio::buffers_begin(response_buffer.data()), 
+            asio::buffers_end(response_buffer.data())
         };
     }
 
-    static constexpr unsigned int http_port_ = 80;
-    static constexpr unsigned int https_port_ = 443;
     std::string scheme_;
     std::string host_;
     std::string path_;
-    int port_;
+    uint16_t port_;
 };

@@ -4,10 +4,20 @@
 #include <algorithm>
 #include <ranges>
 #include <string>
+#include <fstream>
+
+inline std::string read_file(const std::string& path) {
+    std::ifstream file(path);
+    if (!file.is_open()) return {};
+    std::ostringstream ss;
+    ss << file.rdbuf();
+    return ss.str();
+}
 
 inline std::string to_lower(std::string_view str) {
-    return str | std::views::transform([](unsigned char c) { return std::tolower(c); }) |
-           std::ranges::to<std::string>();
+    return str 
+            | std::views::transform([](unsigned char c) { return std::tolower(c); }) 
+            | std::ranges::to<std::string>();
 }
 
 inline void to_lower_inplace(std::string& str) {
@@ -22,6 +32,7 @@ inline sf::Color parse_color(const std::string& name) {
         {"lightblue", sf::Color::Blue},
         {"black", sf::Color::Black},
         {"gray", sf::Color(192, 192, 192)},
+        {"#ddd", sf::Color(192, 192, 192)},
         {"white", sf::Color::White},
         {"yellow", sf::Color::Yellow},
         {"magenta", sf::Color::Magenta},

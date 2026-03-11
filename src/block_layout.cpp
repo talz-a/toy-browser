@@ -1,11 +1,11 @@
-#include <SFML/Graphics/Color.hpp>
-#include <algorithm>
 #include <browser/block_layout.hpp>
 #include <browser/constants.hpp>
 #include <browser/document_layout.hpp>
 #include <browser/draw_commands.hpp>
 #include <browser/html_parser.hpp>
 #include <browser/utils.hpp>
+#include <SFML/Graphics/Color.hpp>
+#include <algorithm>
 #include <memory>
 #include <ranges>
 #include <variant>
@@ -109,7 +109,7 @@ void block_layout::flush() {
 std::vector<draw_cmds> block_layout::paint() {
     std::vector<draw_cmds> cmds;
 
-    if (auto* el = std::get_if<element_data>(&node_->data)) {
+    if (auto* el = std::get_if<Element>(&node_->data)) {
         // if (el->tag == "pre") {
         //     float x2 = x_ + width_;
         //     float y2 = y_ + height_;
@@ -143,11 +143,11 @@ layout_mode block_layout::get_layout_mode() const {
         [&](auto&& arg)->enum layout_mode {
             using T = std::decay_t<decltype(arg)>;
 
-            if constexpr (std::is_same_v<T, text_data>) {
+            if constexpr (std::is_same_v<T, Text>) {
                 return layout_mode::inline_context;
-            } else if constexpr (std::is_same_v<T, element_data>) {
+            } else if constexpr (std::is_same_v<T, Element>) {
                 bool has_block_child = std::ranges::any_of(node_->children, [](const auto& child) {
-                    if (auto* el = std::get_if<element_data>(&child->data)) {
+                    if (auto* el = std::get_if<Element>(&child->data)) {
                         return std::ranges::contains(block_elements_, el->tag);
                     }
                     return false;
@@ -162,13 +162,13 @@ layout_mode block_layout::get_layout_mode() const {
     );
 }
 
-void block_layout::recurse(const html_node* node) {
+void block_layout::recurse(const HTMLNode* node) {
     if (!node) return;
 
     std::visit(
         [&](auto&& arg) {
             using T = std::decay_t<decltype(arg)>;
-            if constexpr (std::is_same_v<T, text_data>) {
+            if constexpr (std::is_same_v<T, Text>) {
                 // We should be spliting on \n's and \t's like python does, but since C++
                 // split does not, we need to normalize it here.
                 std::string text = arg.text;
@@ -179,7 +179,7 @@ void block_layout::recurse(const html_node* node) {
                     word(std::ranges::to<std::string>(w));
                 }
 
-            } else if constexpr (std::is_same_v<T, element_data>) {
+            } else if constexpr (std::is_same_v<T, Element>) {
                 open_tag(arg);
                 for (const auto& child : node->children) {
                     recurse(child.get());
@@ -191,7 +191,7 @@ void block_layout::recurse(const html_node* node) {
     );
 }
 
-void block_layout::open_tag(const element_data& element) {
+void block_layout::open_tag(const Element& element) {
     if (element.tag == "i") {
         style_ = sf::Text::Style::Italic;
     } else if (element.tag == "b") {
@@ -205,7 +205,7 @@ void block_layout::open_tag(const element_data& element) {
     }
 }
 
-void block_layout::close_tag(const element_data& element) {
+void block_layout::close_tag(const Element& element) {
     if (element.tag == "i") {
         style_ = sf::Text::Style::Regular;
     } else if (element.tag == "b") {
