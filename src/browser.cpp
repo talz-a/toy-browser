@@ -179,8 +179,6 @@ std::expected<void, std::string> Browser::load(const Url& url) {
     display_list_.clear();
     paint_tree(&*document_, display_list_);
 
-    run();
-
     return {};
 }
 

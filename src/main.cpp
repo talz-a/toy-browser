@@ -30,5 +30,8 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
+    browser_instance.run();
+
+
     return EXIT_SUCCESS;
 }
