@@ -17,12 +17,6 @@ int main(int argc, char* argv[]) {
        return EXIT_FAILURE;
     }
 
-    sf::Font loaded_font;
-    if (!loaded_font.openFromFile("assets/Inter-VariableFont.ttf")) {
-        std::println(std::cerr, "ERROR: No font loaded.");
-        return EXIT_FAILURE;
-    }
-
     Browser browser_instance = {};
     auto result = browser_instance.load(target.value());
     if (!result) {

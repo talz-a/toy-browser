@@ -4,19 +4,20 @@
 #include <browser/draw_commands.hpp>
 #include <browser/html_parser.hpp>
 
-struct document_layout {
-    document_layout(const HTMLNode* n, const sf::Font& font, float width)
+struct DocumentLayout {
+    DocumentLayout(const HTMLNode* n, const sf::Font& font, float width)
         : node_{n}, font_{&font}, width_{width} {}
 
     void layout();
 
+    // NOTE: why is this here
     [[nodiscard]] std::vector<draw_cmds> paint() const { return display_list_; };
 
     const HTMLNode* node_;
-    const block_layout* parent_ = nullptr;
+    const BlockLayout* parent_ = nullptr;
     float width_;
 
-    std::vector<std::unique_ptr<block_layout>> children_;
+    std::vector<std::unique_ptr<BlockLayout>> children_;
     std::vector<draw_cmds> display_list_;
 
     float height_{};

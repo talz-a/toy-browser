@@ -11,20 +11,20 @@
 #include <variant>
 
 // @HACK: No native way to get ascent of a word as of right now...
-float block_layout::get_ascent(const sf::Font& font, unsigned int size) const {
+float BlockLayout::get_ascent(const sf::Font& font, unsigned int size) const {
     if (size == 0) return 0.f;
     const float top = font.getGlyph(U'\u00CA', size, false, 0).bounds.position.y;
     return -top;
 }
 
 // @HACK: No native way to get descent of a word as of right now...
-float block_layout::get_descent(const sf::Font& font, unsigned int size) const {
+float BlockLayout::get_descent(const sf::Font& font, unsigned int size) const {
     if (size == 0) return 0.f;
     const auto glyph = font.getGlyph('p', size, false);
     return glyph.bounds.size.y + glyph.bounds.position.y;
 }
 
-void block_layout::layout() {
+void BlockLayout::layout() {
     const auto [p_x, p_y, p_width] =
         std::visit([](auto&& p) { return std::tuple{p->x_, p->y_, p->width_}; }, parent_);
 
@@ -34,12 +34,12 @@ void block_layout::layout() {
 
     auto mode = get_layout_mode();
 
-    if (mode == layout_mode::block) {
-        block_layout* previous = nullptr;
+    if (mode == LayoutMode::block) {
+        BlockLayout* previous = nullptr;
 
         for (const auto& child : node_->children) {
             // Create new child layout.
-            auto next = std::make_unique<block_layout>(child.get(), this, previous, *font_, width_);
+            auto next = std::make_unique<BlockLayout>(child.get(), this, previous, *font_, width_);
 
             // Get a raw pointer to use as 'previous' for next layout.
             previous = next.get();
@@ -73,7 +73,7 @@ void block_layout::layout() {
     }
 }
 
-void block_layout::flush() {
+void BlockLayout::flush() {
     if (line_.empty()) return;
 
     float max_ascent = 0.f;
@@ -98,7 +98,7 @@ void block_layout::flush() {
         const float y = y_ + baseline - ascent;
         const float x = x_ + rel_x;
 
-        display_list_.emplace_back(render_item{.x = x, .y = y, .text = std::move(text)});
+        display_list_.emplace_back(RenderItem{.x = x, .y = y, .text = std::move(text)});
     }
 
     cursor_y_ = baseline + (constants::line_height_multiplier * max_descent);
@@ -106,7 +106,7 @@ void block_layout::flush() {
     line_.clear();
 }
 
-std::vector<draw_cmds> block_layout::paint() {
+std::vector<draw_cmds> BlockLayout::paint() {
     std::vector<draw_cmds> cmds;
 
     if (auto* el = std::get_if<Element>(&node_->data)) {
@@ -129,7 +129,7 @@ std::vector<draw_cmds> block_layout::paint() {
         }
     }
 
-    if (get_layout_mode() == layout_mode::inline_context) {
+    if (get_layout_mode() == LayoutMode::inline_context) {
         for (auto& [x, y, word] : display_list_) {
             cmds.emplace_back(draw_text(x, y, std::move(word)));
         }
@@ -138,13 +138,13 @@ std::vector<draw_cmds> block_layout::paint() {
     return cmds;
 }
 
-layout_mode block_layout::get_layout_mode() const {
+LayoutMode BlockLayout::get_layout_mode() const {
     return std::visit(
-        [&](auto&& arg)->enum layout_mode {
+        [&](auto&& arg)->enum LayoutMode {
             using T = std::decay_t<decltype(arg)>;
 
             if constexpr (std::is_same_v<T, Text>) {
-                return layout_mode::inline_context;
+                return LayoutMode::inline_context;
             } else if constexpr (std::is_same_v<T, Element>) {
                 bool has_block_child = std::ranges::any_of(node_->children, [](const auto& child) {
                     if (auto* el = std::get_if<Element>(&child->data)) {
@@ -153,16 +153,16 @@ layout_mode block_layout::get_layout_mode() const {
                     return false;
                 });
 
-                if (has_block_child) return layout_mode::block;
+                if (has_block_child) return LayoutMode::block;
             }
 
-            return node_->children.empty() ? layout_mode::block : layout_mode::inline_context;
+            return node_->children.empty() ? LayoutMode::block : LayoutMode::inline_context;
         },
         node_->data
     );
 }
 
-void block_layout::recurse(const HTMLNode* node) {
+void BlockLayout::recurse(const HTMLNode* node) {
     if (!node) return;
 
     std::visit(
@@ -191,7 +191,7 @@ void block_layout::recurse(const HTMLNode* node) {
     );
 }
 
-void block_layout::open_tag(const Element& element) {
+void BlockLayout::open_tag(const Element& element) {
     if (element.tag == "i") {
         style_ = sf::Text::Style::Italic;
     } else if (element.tag == "b") {
@@ -205,7 +205,7 @@ void block_layout::open_tag(const Element& element) {
     }
 }
 
-void block_layout::close_tag(const Element& element) {
+void BlockLayout::close_tag(const Element& element) {
     if (element.tag == "i") {
         style_ = sf::Text::Style::Regular;
     } else if (element.tag == "b") {
@@ -220,7 +220,7 @@ void block_layout::close_tag(const Element& element) {
     }
 }
 
-void block_layout::word(const std::string& word_text) {
+void BlockLayout::word(const std::string& word_text) {
     sf::Text word_sf(*font_, sf::String::fromUtf8(word_text.begin(), word_text.end()), size_);
     word_sf.setStyle(style_ | weight_);
 

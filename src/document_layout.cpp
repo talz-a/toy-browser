@@ -2,12 +2,12 @@
 #include <browser/constants.hpp>
 #include <browser/document_layout.hpp>
 
-void document_layout::layout() {
+void DocumentLayout::layout() {
     width_ = width_ - 2 * constants::h_step;
     x_ = constants::h_step;
     y_ = constants::v_step;
 
-    auto child = std::make_unique<block_layout>(node_, this, nullptr, *font_, width_);
+    auto child = std::make_unique<BlockLayout>(node_, this, nullptr, *font_, width_);
     child->layout();
 
     // Set height before moving.

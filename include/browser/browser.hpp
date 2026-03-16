@@ -17,7 +17,7 @@ struct Browser {
     void render();
 
     float scroll_ = 0.0f;
-    std::optional<document_layout> document_;
+    std::optional<DocumentLayout> document_;
     sf::RenderWindow window_;
     sf::Font font_;
     std::vector<draw_cmds> display_list_;

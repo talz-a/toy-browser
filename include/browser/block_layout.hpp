@@ -8,31 +8,31 @@
 #include <string>
 #include <vector>
 
-struct render_item {
+struct RenderItem {
     float x{}, y{};
     sf::Text text;
 };
 
-struct line_item {
+struct LineItem {
     float x{};
     sf::Text text;
 };
 
-enum class layout_mode : std::uint8_t {
+enum class LayoutMode : std::uint8_t {
     block,
     inline_context,
 };
 
 // @TODO: See if we can get around this forward decl stuff.
-struct document_layout;
-struct block_layout;
-using layout_parent = std::variant<document_layout*, block_layout*>;
+struct DocumentLayout;
+struct BlockLayout;
+using LayoutParent = std::variant<DocumentLayout*, BlockLayout*>;
 
-struct block_layout {
-    block_layout(
+struct BlockLayout {
+    BlockLayout(
         const HTMLNode* n,
-        layout_parent parent,
-        const block_layout* previous,
+        LayoutParent parent,
+        const BlockLayout* previous,
         const sf::Font& font,
         float width
     )
@@ -46,7 +46,7 @@ struct block_layout {
     [[nodiscard]] float get_ascent(const sf::Font& font, unsigned int size) const;
     [[nodiscard]] float get_descent(const sf::Font& font, unsigned int size) const;
 
-    [[nodiscard]] layout_mode get_layout_mode() const;
+    [[nodiscard]] LayoutMode get_layout_mode() const;
 
     void recurse(const HTMLNode* node);
 
@@ -56,13 +56,13 @@ struct block_layout {
     void word(const std::string& word);
 
     const HTMLNode* node_;
-    layout_parent parent_;
-    const block_layout* previous_ = nullptr;
+    LayoutParent parent_;
+    const BlockLayout* previous_ = nullptr;
     float width_;
 
-    std::vector<std::unique_ptr<block_layout>> children_;
-    std::vector<line_item> line_;
-    std::vector<render_item> display_list_;
+    std::vector<std::unique_ptr<BlockLayout>> children_;
+    std::vector<LineItem> line_;
+    std::vector<RenderItem> display_list_;
 
     float cursor_x_ = constants::h_step;
     float cursor_y_ = constants::v_step;

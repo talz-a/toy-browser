@@ -4,11 +4,9 @@
 #include <browser/draw_commands.hpp>
 #include <browser/html_parser.hpp>
 #include <SFML/Graphics.hpp>
-#include <exception>
 #include <optional>
 #include <print>
 #include <iostream>
-#include <ranges>
 #include <string>
 #include <variant>
 #include <vector>
@@ -36,7 +34,7 @@ void print_tree(const HTMLNode& n, int indent = 0) {
     }
 }
 
-void print_layout_tree(const block_layout& layout, int indent = 0) {
+void print_layout_tree(const BlockLayout& layout, int indent = 0) {
     std::print("{:>{}}", "", indent);
     std::print("BlockLayout");
 
@@ -57,11 +55,11 @@ void print_layout_tree(const block_layout& layout, int indent = 0) {
     }
 }
 
-void paint_tree(const layout_parent& layout_object, std::vector<draw_cmds>& display_list) {
+void paint_tree(const LayoutParent& layout_object, std::vector<draw_cmds>& display_list) {
     display_list.append_range(std::visit([](auto&& arg) { return arg->paint(); }, layout_object));
 
     for (const auto& child : std::visit(
-             [](auto&& arg) -> const std::vector<std::unique_ptr<block_layout>>& {
+             [](auto&& arg) -> const std::vector<std::unique_ptr<BlockLayout>>& {
                  return arg->children_;
              },
              layout_object
@@ -166,7 +164,7 @@ std::expected<void, std::string> Browser::load(const Url& url) {
     // print_tree(*nodes_);
 
     document_.emplace(
-        document_layout(nodes_.get(), font_, static_cast<float>(window_.getSize().x))
+        DocumentLayout(nodes_.get(), font_, static_cast<float>(window_.getSize().x))
     );
 
     document_->layout();
