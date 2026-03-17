@@ -75,6 +75,16 @@ void paint_tree(const LayoutParent& layout_object, std::vector<draw_cmds>& displ
 void style(HTMLNode& node, const std::vector<CSSRule>& rules) {
     node.style.clear();
 
+    // Apply INHERITED_PROPERTIES.
+    for (const auto& [prop, default_val] : INHERITED_PROPERTIES) {
+        std::string key{prop};
+        if (node.parent && node.parent->style.contains(key)) {
+            node.style[key] = node.parent->style[key];
+        } else {
+            node.style[key] = std::string(default_val);
+        }
+    }
+
     for (const auto& [selector, body] : rules) {
         if (matches_any(selector, node)) {
             for (const auto& [property, value] : body) {
@@ -91,6 +101,24 @@ void style(HTMLNode& node, const std::vector<CSSRule>& rules) {
             // std::println("DEBUG: Adding style {} {}.", property, value);
             node.style[property] = value;
         }
+    }
+
+    if (node.style.contains("font-size") && node.style["font-size"].ends_with("%")) {
+        std::string parent_font_size;
+
+        if (node.parent) {
+            parent_font_size = node.parent->style["font-size"];
+        } else {
+            parent_font_size = INHERITED_PROPERTIES.at("font-size");
+        }
+
+        // @NOTE: stof is smart; it reads the digits and stops at non numeric characters.
+        float node_pct = std::stof(node.style["font-size"]) / 100.0f;
+
+        // @NOTE: We don't want to read the px, but stof handles that automatically.
+        float parent_px = std::stof(parent_font_size);
+
+        node.style["font-size"] = std::format("{}px", node_pct * parent_px);
     }
 
     for (const auto& child : node.children) {

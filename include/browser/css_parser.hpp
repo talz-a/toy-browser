@@ -9,6 +9,12 @@
 #include <unordered_map>
 #include <vector>
 
+inline const std::unordered_map<std::string_view, std::string_view> INHERITED_PROPERTIES = {
+    {"font-size", "16px"},
+    {"font-style", "normal"},
+    {"font-weight", "normal"},
+    {"color", "black"}};
+
 class TagSelector;
 class DescendantSelector;
 
