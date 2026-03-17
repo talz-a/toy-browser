@@ -1,11 +1,11 @@
+#include <SFML/Graphics/Color.hpp>
+#include <algorithm>
 #include <browser/block_layout.hpp>
 #include <browser/constants.hpp>
 #include <browser/document_layout.hpp>
 #include <browser/draw_commands.hpp>
 #include <browser/html_parser.hpp>
 #include <browser/utils.hpp>
-#include <SFML/Graphics/Color.hpp>
-#include <algorithm>
 #include <memory>
 #include <ranges>
 #include <variant>
@@ -53,18 +53,13 @@ void BlockLayout::layout() {
         }
 
         // This needs to be after as the height of a layout depends on the layout of it's childern.
-        height_ = std::ranges::fold_left(children_, 0.f, [](float sum, const auto& child) {
-            return sum + child->height_;
-        });
+        height_ = std::ranges::fold_left(
+            children_, 0.f, [](float sum, const auto& child) { return sum + child->height_; });
     } else {
         cursor_x_ = 0.f;
         cursor_y_ = 0.f;
 
         height_ = cursor_y_;
-
-        weight_ = sf::Text::Style::Regular;
-        style_ = sf::Text::Style::Regular;
-        size_ = constants::font_size;
 
         recurse(node_);
         flush();
@@ -158,79 +153,60 @@ LayoutMode BlockLayout::get_layout_mode() const {
 
             return node_->children.empty() ? LayoutMode::block : LayoutMode::inline_context;
         },
-        node_->data
-    );
+        node_->data);
 }
 
 void BlockLayout::recurse(const HTMLNode* node) {
     if (!node) return;
 
     std::visit(
-        [&](auto&& arg) {
-            using T = std::decay_t<decltype(arg)>;
+        [&]<typename T>(const T& arg) {
             if constexpr (std::is_same_v<T, Text>) {
                 // We should be spliting on \n's and \t's like python does, but since C++
                 // split does not, we need to normalize it here.
                 std::string text = arg.text;
                 std::ranges::replace_if(text, [](unsigned char c) { return std::isspace(c); }, ' ');
-
                 for (const auto& w : std::views::split(text, ' ')) {
                     if (w.empty()) continue;
-                    word(std::ranges::to<std::string>(w));
+                    word(*node, std::ranges::to<std::string>(w));
                 }
 
             } else if constexpr (std::is_same_v<T, Element>) {
-                open_tag(arg);
+                if (arg.tag == "br") flush();
+
                 for (const auto& child : node->children) {
                     recurse(child.get());
                 }
-                close_tag(arg);
             }
         },
-        node->data
-    );
+        node->data);
 }
 
-void BlockLayout::open_tag(const Element& element) {
-    if (element.tag == "i") {
-        style_ = sf::Text::Style::Italic;
-    } else if (element.tag == "b") {
-        weight_ = sf::Text::Style::Bold;
-    } else if (element.tag == "small") {
-        size_ -= constants::font_size_small_diff;
-    } else if (element.tag == "big") {
-        size_ += constants::font_size_big_diff;
-    } else if (element.tag == "br") {
-        flush();
-    }
-}
+void BlockLayout::word(const HTMLNode& node, const std::string& word_text) {
+    // 1. Resolve Font Size (e.g., "16px" -> 16). yeah this might be wrong.
+    float fs_px = std::stof(node.style.at("font-size"));
 
-void BlockLayout::close_tag(const Element& element) {
-    if (element.tag == "i") {
-        style_ = sf::Text::Style::Regular;
-    } else if (element.tag == "b") {
-        weight_ = sf::Text::Style::Regular;
-    } else if (element.tag == "small") {
-        size_ += constants::font_size_small_diff;
-    } else if (element.tag == "big") {
-        size_ -= constants::font_size_big_diff;
-    } else if (element.tag == "p") {
-        flush();
-        cursor_y_ += constants::v_step;
-    }
-}
+    // 2. Resolve Font Style & Weight.
+    uint32_t sfml_style = sf::Text::Regular;
+    if (node.style.at("font-weight") == "bold") sfml_style |= sf::Text::Bold;
+    if (node.style.at("font-style") == "italic") sfml_style |= sf::Text::Italic;
 
-void BlockLayout::word(const std::string& word_text) {
-    sf::Text word_sf(*font_, sf::String::fromUtf8(word_text.begin(), word_text.end()), size_);
-    word_sf.setStyle(style_ | weight_);
+    // 3. Parse color.
+    sf::Color color = parse_color(node.style.at("color"));
+
+    // 4. Create SFML Text.
+    sf::Text word_sf(*font_,
+                     sf::String::fromUtf8(word_text.begin(), word_text.end()),
+                     static_cast<unsigned int>(fs_px));
+    word_sf.setStyle(sfml_style);
+    word_sf.setFillColor(color);
 
     const float word_width = word_sf.getGlobalBounds().size.x;
-
-    bool is_bold = (weight_ & sf::Text::Style::Bold) || (style_ & sf::Text::Style::Bold);
-    const float space_width = font_->getGlyph(U' ', size_, is_bold).advance;
-
     if (cursor_x_ + word_width > width_) flush();
 
     line_.push_back({cursor_x_, std::move(word_sf)});
+
+    bool is_bold = (sfml_style & sf::Text::Bold);
+    float space_width = font_->getGlyph(U' ', static_cast<unsigned int>(fs_px), is_bold).advance;
     cursor_x_ += word_width + space_width;
 }

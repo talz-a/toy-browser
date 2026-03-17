@@ -29,13 +29,11 @@ struct BlockLayout;
 using LayoutParent = std::variant<DocumentLayout*, BlockLayout*>;
 
 struct BlockLayout {
-    BlockLayout(
-        const HTMLNode* n,
-        LayoutParent parent,
-        const BlockLayout* previous,
-        const sf::Font& font,
-        float width
-    )
+    BlockLayout(const HTMLNode* n,
+                LayoutParent parent,
+                const BlockLayout* previous,
+                const sf::Font& font,
+                float width)
         : node_{n}, parent_{parent}, previous_{previous}, font_{&font}, width_{width} {}
 
     void layout();
@@ -50,10 +48,7 @@ struct BlockLayout {
 
     void recurse(const HTMLNode* node);
 
-    void open_tag(const Element& element);
-    void close_tag(const Element& element);
-
-    void word(const std::string& word);
+    void word(const HTMLNode& node, const std::string& word);
 
     const HTMLNode* node_;
     LayoutParent parent_;
@@ -66,9 +61,6 @@ struct BlockLayout {
 
     float cursor_x_ = constants::h_step;
     float cursor_y_ = constants::v_step;
-    int weight_ = sf::Text::Style::Regular;
-    int style_ = sf::Text::Style::Regular;
-    int size_ = constants::font_size;
 
     float x_{};
     float y_{};
@@ -82,6 +74,5 @@ struct BlockLayout {
          "h3",   "h4",       "h5",      "h6",         "hgroup",     "header", "footer", "address",
          "p",    "hr",       "pre",     "blockquote", "ol",         "ul",     "menu",   "li",
          "dl",   "dt",       "dd",      "figure",     "figcaption", "main",   "div",    "table",
-         "form", "fieldset", "legend",  "details",    "summary"}
-    );
+         "form", "fieldset", "legend",  "details",    "summary"});
 };
