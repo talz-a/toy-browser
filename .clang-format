@@ -1,0 +1,15 @@
+---
+BasedOnStyle: Chromium
+Language: Cpp
+Standard: Latest
+
+IndentWidth: 4
+ColumnLimit: 100
+AllowShortIfStatementsOnASingleLine: true
+
+DerivePointerAlignment: false
+PointerAlignment: Left
+
+BinPackArguments: false
+IndentAccessModifiers: false
+AccessModifierOffset: -4

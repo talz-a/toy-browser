@@ -1,29 +1,31 @@
 #include <browser/css_parser.hpp>
 #include <browser/utils.hpp>
 #include <cctype>
+#include <expected>
 #include <format>
-#include <iostream>
 #include <memory>
 #include <string_view>
-#include <expected>
 
 bool matches_any(const Selector& sel, const HTMLNode& node) {
     return std::visit(
-        [&node](auto&& arg) -> bool {
-            using T = std::decay_t<decltype(arg)>;
+        [&node]<typename T>(const T& arg) -> bool {
             if constexpr (std::is_same_v<T, std::unique_ptr<DescendantSelector>>) {
                 return arg->matches(node);
             } else {
                 return arg.matches(node);
             }
         },
-        sel
-    );
+        sel);
 }
 
 bool TagSelector::matches(const HTMLNode& node) const {
     auto* el = std::get_if<Element>(&node.data);
     return el && el->tag == tag_;
+}
+
+DescendantSelector::DescendantSelector(Selector ancestor, TagSelector descendant)
+    : ancestor_{std::move(ancestor)}, descendant_{std::move(descendant)} {
+    priority_ = selector_priority(ancestor_) + descendant_.priority_;
 }
 
 bool DescendantSelector::matches(const HTMLNode& node) const {
@@ -75,12 +77,12 @@ std::expected<CSSPair, std::string> CSSParser::pair() {
     if (!prop) return std::unexpected(prop.error());
 
     whitespace();
-    
+
     auto lit = literal(':');
     if (!lit) return std::unexpected(lit.error());
 
     whitespace();
-    
+
     auto val = word();
     if (!val) return std::unexpected(val.error());
 
@@ -120,7 +122,8 @@ CSSBody CSSParser::body() {
         if (!parse_pair_sequence) {
             auto why = ignore_until({';', '}'});
             if (why == ';') {
-                literal(';');
+                // @NOTE: Fix this later.
+                std::ignore = literal(';');
                 whitespace();
             } else {
                 break;
@@ -135,14 +138,14 @@ std::expected<Selector, std::string> CSSParser::selector_node() {
     auto first_tag = word();
     if (!first_tag) return std::unexpected(first_tag.error());
 
-    Selector out = TagSelector{.tag_ = to_lower(*first_tag)};
+    Selector out = TagSelector(to_lower(*first_tag));
     whitespace();
 
     while (i_ < s_.size() && s_[i_] != '{') {
         auto tag = word();
         if (!tag) return std::unexpected(tag.error());
 
-        TagSelector descendant = TagSelector{.tag_ = to_lower(*tag)};
+        TagSelector descendant = TagSelector(to_lower(*tag));
         out = std::make_unique<DescendantSelector>(std::move(out), std::move(descendant));
         whitespace();
     }
@@ -178,7 +181,8 @@ std::vector<CSSRule> CSSParser::parse() {
         } else {
             auto why = ignore_until({'}'});
             if (why == '}') {
-                literal('}');
+                // @NOTE: Fix this later.
+                std::ignore = literal('}');
                 whitespace();
             } else {
                 break;

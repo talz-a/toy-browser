@@ -2,12 +2,12 @@
 
 #include <browser/html_parser.hpp>
 #include <cstddef>
+#include <expected>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
-#include <expected>
 
 class TagSelector;
 class DescendantSelector;
@@ -18,16 +18,21 @@ using CSSPair = std::pair<std::string, std::string>;
 bool matches_any(const Selector& sel, const HTMLNode& node);
 
 struct TagSelector {
-    std::string tag_;
+    TagSelector(std::string_view tag) : tag_{tag} {}
 
     [[nodiscard]] bool matches(const HTMLNode& node) const;
+    std::string tag_;
+    uint16_t priority_ = 1;
 };
 
 struct DescendantSelector {
-    Selector ancestor_;
-    TagSelector descendant_;
+    DescendantSelector(Selector ancestor, TagSelector descendant);
 
     [[nodiscard]] bool matches(const HTMLNode& node) const;
+
+    Selector ancestor_;
+    TagSelector descendant_;
+    uint16_t priority_ = 1;
 };
 
 using CSSBody = std::unordered_map<std::string, std::string>;
@@ -53,3 +58,15 @@ struct CSSParser {
     std::string_view s_;
     std::size_t i_ = 0;
 };
+
+inline uint16_t selector_priority(const Selector& sel) {
+    return std::visit(
+        [](const auto& arg) -> uint16_t {
+            if constexpr (requires { arg->priority_; }) {
+                return arg->priority_;
+            } else {
+                return arg.priority_;
+            }
+        },
+        sel);
+}

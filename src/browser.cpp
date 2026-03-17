@@ -1,12 +1,12 @@
+#include <SFML/Graphics.hpp>
 #include <browser/browser.hpp>
 #include <browser/constants.hpp>
 #include <browser/css_parser.hpp>
 #include <browser/draw_commands.hpp>
 #include <browser/html_parser.hpp>
-#include <SFML/Graphics.hpp>
+#include <iostream>
 #include <optional>
 #include <print>
-#include <iostream>
 #include <string>
 #include <variant>
 #include <vector>
@@ -14,18 +14,20 @@
 void print_tree(const HTMLNode& n, int indent = 0) {
     std::string_view current_tag;
 
-    std::visit([&]<typename T>(const T& arg) {
-        std::print("{:>{}}", "", indent);
-        if constexpr (std::is_same_v<T, Text>) {
-            std::println("{}", arg.text);
-        } else if constexpr (std::is_same_v<T, Element>) {
-            std::println("<{}>", arg.tag);
-            current_tag = arg.tag;
-        }
-    }, n.data);
+    std::visit(
+        [&]<typename T>(const T& arg) {
+            std::print("{:>{}}", "", indent);
+            if constexpr (std::is_same_v<T, Text>) {
+                std::println("{}", arg.text);
+            } else if constexpr (std::is_same_v<T, Element>) {
+                std::println("<{}>", arg.tag);
+                current_tag = arg.tag;
+            }
+        },
+        n.data);
 
     for (const auto& child : n.children) {
-        if (child) print_tree(*child, indent + 2); 
+        if (child) print_tree(*child, indent + 2);
     }
 
     if (!current_tag.empty()) {
@@ -39,14 +41,16 @@ void print_layout_tree(const BlockLayout& layout, int indent = 0) {
     std::print("BlockLayout");
 
     const HTMLNode* n = layout.node_;
-    std::visit([&]<typename T>(const T& arg) {
-        if constexpr (std::is_same_v<T, Element>) {
-            std::print(" (<{}>)", arg.tag);
-        } else if constexpr (std::is_same_v<T, Text>) {
-            std::string snippet = arg.text.substr(0, 20);
-            std::print(" (\"{}...\")", snippet);
-        }
-    }, n->data);
+    std::visit(
+        [&]<typename T>(const T& arg) {
+            if constexpr (std::is_same_v<T, Element>) {
+                std::print(" (<{}>)", arg.tag);
+            } else if constexpr (std::is_same_v<T, Text>) {
+                std::string snippet = arg.text.substr(0, 20);
+                std::print(" (\"{}...\")", snippet);
+            }
+        },
+        n->data);
 
     std::println("");
 
@@ -62,8 +66,7 @@ void paint_tree(const LayoutParent& layout_object, std::vector<draw_cmds>& displ
              [](auto&& arg) -> const std::vector<std::unique_ptr<BlockLayout>>& {
                  return arg->children_;
              },
-             layout_object
-         )) {
+             layout_object)) {
         paint_tree(child.get(), display_list);
     }
 }
@@ -113,13 +116,13 @@ Browser::Browser() : window_(sf::VideoMode({800, 600}), "Toy Browser") {
 
 std::expected<void, std::string> Browser::load(const Url& url) {
     const auto body = url.request();
-    
+
     if (!body) return std::unexpected(body.error());
 
     nodes_ = HTMLParser(body.value()).parse();
 
     std::string default_css = read_file("assets/browser.css");
-    std::vector<CSSRule> css_rules = CSSParser{.s_= default_css}.parse();
+    std::vector<CSSRule> css_rules = CSSParser{.s_ = default_css}.parse();
 
     std::vector<HTMLNode*> node_list;
     tree_to_list(*nodes_, node_list);
@@ -143,29 +146,30 @@ std::expected<void, std::string> Browser::load(const Url& url) {
         if (!style_url) {
             std::println(std::cerr, "Failed to fetch stylesheet: {}", style_url.error());
             continue;
-        } 
+        }
 
         auto request_body = style_url.value().request();
 
         if (!request_body) {
             std::println(std::cerr, "Failed to load stylesheet: {}", request_body.error());
             continue;
-        } 
+        }
 
         std::vector<CSSRule> new_rules = CSSParser(request_body.value()).parse();
         for (auto& rule : new_rules) {
             css_rules.push_back(std::move(rule));
-        } 
+        }
     }
+
+    auto cascade_priority = [](const CSSRule& rule) { return selector_priority(rule.first); };
+    std::ranges::stable_sort(css_rules, std::less{}, cascade_priority);
 
     style(*nodes_, css_rules);
 
     // Debug print;
     // print_tree(*nodes_);
 
-    document_.emplace(
-        DocumentLayout(nodes_.get(), font_, static_cast<float>(window_.getSize().x))
-    );
+    document_.emplace(DocumentLayout(nodes_.get(), font_, static_cast<float>(window_.getSize().x)));
 
     document_->layout();
 
@@ -189,8 +193,7 @@ void Browser::process_events() {
         } else if (const auto* resized = event->getIf<sf::Event::Resized>()) {
             sf::FloatRect visibleArea(
                 {0.f, 0.f},
-                {static_cast<float>(resized->size.x), static_cast<float>(resized->size.y)}
-            );
+                {static_cast<float>(resized->size.x), static_cast<float>(resized->size.y)});
 
             window_.setView(sf::View(visibleArea));
             needs_resize = true;
@@ -198,7 +201,9 @@ void Browser::process_events() {
             if (keyPressed->code == sf::Keyboard::Key::Down) {
                 if (!document_) return;
 
-                float max_y = std::max( document_->height_ + 2 * constants::v_step - static_cast<float>(window_.getSize().y), 0.0f);
+                float max_y = std::max(document_->height_ + 2 * constants::v_step -
+                                           static_cast<float>(window_.getSize().y),
+                                       0.0f);
                 scroll_ = std::min(scroll_ + constants::scroll_step, max_y);
 
             } else if (keyPressed->code == sf::Keyboard::Key::Up) {
@@ -227,8 +232,7 @@ void Browser::render() {
                 if (arg.bottom_ < scroll_) return;
                 arg.execute(scroll_, window_);
             },
-            cmd
-        );
+            cmd);
     }
 
     window_.display();

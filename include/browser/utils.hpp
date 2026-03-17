@@ -2,9 +2,9 @@
 
 #include <SFML/Graphics.hpp>
 #include <algorithm>
+#include <fstream>
 #include <ranges>
 #include <string>
-#include <fstream>
 
 inline std::string read_file(const std::string& path) {
     std::ifstream file(path);
@@ -15,9 +15,8 @@ inline std::string read_file(const std::string& path) {
 }
 
 inline std::string to_lower(std::string_view str) {
-    return str 
-            | std::views::transform([](unsigned char c) { return std::tolower(c); }) 
-            | std::ranges::to<std::string>();
+    return str | std::views::transform([](unsigned char c) { return std::tolower(c); }) |
+           std::ranges::to<std::string>();
 }
 
 inline void to_lower_inplace(std::string& str) {
@@ -36,8 +35,7 @@ inline sf::Color parse_color(const std::string& name) {
         {"white", sf::Color::White},
         {"yellow", sf::Color::Yellow},
         {"magenta", sf::Color::Magenta},
-        {"cyan", sf::Color::Cyan}
-    };
+        {"cyan", sf::Color::Cyan}};
 
     auto it = colors.find(name);
     if (it != colors.end()) {
