@@ -2,8 +2,8 @@
 
 #include <SFML/Graphics.hpp>
 
-struct draw_rect {
-    draw_rect(float x1, float y1, float x2, float y2, sf::Color color)
+struct DrawRect {
+    DrawRect(float x1, float y1, float x2, float y2, sf::Color color)
         : top_{y1}, left_{x1}, bottom_{y2}, right_{x2}, color_{color} {}
 
     void execute(float scroll, sf::RenderWindow& window);
@@ -15,8 +15,8 @@ struct draw_rect {
     sf::Color color_;
 };
 
-struct draw_text {
-    draw_text(float x1, float y1, sf::Text text) : top_{y1}, left_{x1}, text_{std::move(text)} {
+struct DrawText {
+    DrawText(float x1, float y1, sf::Text text) : top_{y1}, left_{x1}, text_{std::move(text)} {
         bottom_ = y1 + text_.getLineSpacing();
     }
 
@@ -28,4 +28,4 @@ struct draw_text {
     sf::Text text_;
 };
 
-using draw_cmds = std::variant<draw_rect, draw_text>;
+using DrawCmd = std::variant<DrawRect, DrawText>;

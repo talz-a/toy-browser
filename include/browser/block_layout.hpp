@@ -19,11 +19,10 @@ struct LineItem {
 };
 
 enum class LayoutMode : std::uint8_t {
-    block,
-    inline_context,
+    Block,
+    InlineContext,
 };
 
-// @TODO: See if we can get around this forward decl stuff.
 struct DocumentLayout;
 struct BlockLayout;
 using LayoutParent = std::variant<DocumentLayout*, BlockLayout*>;
@@ -39,7 +38,7 @@ struct BlockLayout {
     void layout();
     void flush();
 
-    [[nodiscard]] std::vector<draw_cmds> paint();
+    [[nodiscard]] std::vector<DrawCmd> paint();
 
     [[nodiscard]] float get_ascent(const sf::Font& font, unsigned int size) const;
     [[nodiscard]] float get_descent(const sf::Font& font, unsigned int size) const;

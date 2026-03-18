@@ -59,23 +59,10 @@ void print_layout_tree(const BlockLayout& layout, int indent = 0) {
     }
 }
 
-void paint_tree(const LayoutParent& layout_object, std::vector<draw_cmds>& display_list) {
-    display_list.append_range(std::visit([](auto&& arg) { return arg->paint(); }, layout_object));
-
-    for (const auto& child : std::visit(
-             [](auto&& arg) -> const std::vector<std::unique_ptr<BlockLayout>>& {
-                 return arg->children_;
-             },
-             layout_object)) {
-        paint_tree(child.get(), display_list);
-    }
-}
-
 // @TODO: Move this to a better place.
 void style(HTMLNode& node, const std::vector<CSSRule>& rules) {
     node.style.clear();
 
-    // Apply INHERITED_PROPERTIES.
     for (const auto& [prop, default_val] : INHERITED_PROPERTIES) {
         std::string key{prop};
         if (node.parent && node.parent->style.contains(key)) {
@@ -126,18 +113,20 @@ void style(HTMLNode& node, const std::vector<CSSRule>& rules) {
     }
 }
 
-// @TODO: This should be templated to work on both html and layout trees.
-// Also not really sure why this takes the list as a param and does not just return one?
-void tree_to_list(HTMLNode& tree, std::vector<HTMLNode*>& list) {
-    list.push_back(&tree);
-    for (const auto& child : tree.children) {
-        tree_to_list(*child, list);
+void paint_tree(const LayoutParent& layout_object, std::vector<DrawCmd>& display_list) {
+    display_list.append_range(std::visit([](auto&& arg) { return arg->paint(); }, layout_object));
+
+    for (const auto& child : std::visit(
+             [](auto&& arg) -> const std::vector<std::unique_ptr<BlockLayout>>& {
+                 return arg->children_;
+             },
+             layout_object)) {
+        paint_tree(child.get(), display_list);
     }
 }
 
 Browser::Browser() : window_(sf::VideoMode({800, 600}), "Toy Browser") {
     if (!font_.openFromFile("assets/Inter-VariableFont.ttf")) {
-        // It is okay to throw here since this is a fatal error.
         throw std::runtime_error("ERROR: No font loaded.");
     }
 }
@@ -147,10 +136,10 @@ std::expected<void, std::string> Browser::load(const Url& url) {
 
     if (!body) return std::unexpected(body.error());
 
-    nodes_ = HTMLParser(body.value()).parse();
+    nodes_ = HTMLParser(*body).parse();
 
     std::string default_css = read_file("assets/browser.css");
-    std::vector<CSSRule> css_rules = CSSParser{.s_ = default_css}.parse();
+    std::vector<CSSRule> css_rules = CSSParser(default_css).parse();
 
     std::vector<HTMLNode*> node_list;
     tree_to_list(*nodes_, node_list);
@@ -183,7 +172,7 @@ std::expected<void, std::string> Browser::load(const Url& url) {
             continue;
         }
 
-        std::vector<CSSRule> new_rules = CSSParser(request_body.value()).parse();
+        std::vector<CSSRule> new_rules = CSSParser(*request_body).parse();
         for (auto& rule : new_rules) {
             css_rules.push_back(std::move(rule));
         }

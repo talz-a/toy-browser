@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
+// @TODO: Can make this constexpr so it faster, but is not worth for now.
 inline const std::unordered_map<std::string_view, std::string_view> INHERITED_PROPERTIES = {
     {"font-size", "16px"},
     {"font-style", "normal"},
@@ -21,12 +22,11 @@ class DescendantSelector;
 using Selector = std::variant<TagSelector, std::unique_ptr<DescendantSelector>>;
 using CSSPair = std::pair<std::string, std::string>;
 
-bool matches_any(const Selector& sel, const HTMLNode& node);
-
 struct TagSelector {
     TagSelector(std::string_view tag) : tag_{tag} {}
 
     [[nodiscard]] bool matches(const HTMLNode& node) const;
+
     std::string tag_;
     uint16_t priority_ = 1;
 };
@@ -41,10 +41,13 @@ struct DescendantSelector {
     uint16_t priority_ = 1;
 };
 
+bool matches_any(const Selector& sel, const HTMLNode& node);
+
 using CSSBody = std::unordered_map<std::string, std::string>;
 using CSSRule = std::pair<Selector, CSSBody>;
 
 struct CSSParser {
+    explicit CSSParser(std::string_view s) : s_{s} {}
     void whitespace();
 
     std::expected<std::string_view, std::string> word();

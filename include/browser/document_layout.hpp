@@ -10,15 +10,14 @@ struct DocumentLayout {
 
     void layout();
 
-    // NOTE: why is this here
-    [[nodiscard]] std::vector<draw_cmds> paint() const { return display_list_; };
+    [[nodiscard]] std::vector<DrawCmd> paint() const { return display_list_; };
 
     const HTMLNode* node_;
     const BlockLayout* parent_ = nullptr;
     float width_;
 
     std::vector<std::unique_ptr<BlockLayout>> children_;
-    std::vector<draw_cmds> display_list_;
+    std::vector<DrawCmd> display_list_;
 
     float height_{};
     float x_{};

@@ -1,6 +1,6 @@
+#include <SFML/Graphics.hpp>
 #include <browser/browser.hpp>
 #include <browser/url.hpp>
-#include <SFML/Graphics.hpp>
 #include <cstdlib>
 #include <iostream>
 #include <print>
@@ -13,19 +13,18 @@ int main(int argc, char* argv[]) {
 
     auto target = Url::parse_url(argv[1]);
     if (!target) {
-       std::println(std::cerr, "{}", target.error());
-       return EXIT_FAILURE;
+        std::println(std::cerr, "{}", target.error());
+        return EXIT_FAILURE;
     }
 
-    Browser browser_instance = {};
-    auto result = browser_instance.load(target.value());
+    Browser browser = {};
+    auto result = browser.load(*target);
     if (!result) {
         std::println(std::cerr, "{}", result.error());
         return EXIT_FAILURE;
     }
 
-    browser_instance.run();
-
+    browser.run();
 
     return EXIT_SUCCESS;
 }

@@ -6,6 +6,18 @@
 #include <ranges>
 #include <string>
 
+// @TODO: Maybe move this to a better place. Make sure to double check this works when using it with
+// BlockLayout.
+template <typename Tree>
+void tree_to_list(Tree& tree, std::vector<Tree*>& list) {
+    list.push_back(&tree);
+    for (const auto& child : tree.children) {
+        if (child) {
+            tree_to_list(*child, list);
+        }
+    }
+}
+
 inline std::string read_file(const std::string& path) {
     std::ifstream file(path);
     if (!file.is_open()) return {};
@@ -13,6 +25,10 @@ inline std::string read_file(const std::string& path) {
     ss << file.rdbuf();
     return ss.str();
 }
+
+inline bool is_space(unsigned char c) {
+    return std::isspace(c);
+};
 
 inline std::string to_lower(std::string_view str) {
     return str | std::views::transform([](unsigned char c) { return std::tolower(c); }) |

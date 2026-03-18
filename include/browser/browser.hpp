@@ -20,6 +20,6 @@ struct Browser {
     std::optional<DocumentLayout> document_;
     sf::RenderWindow window_;
     sf::Font font_;
-    std::vector<draw_cmds> display_list_;
+    std::vector<DrawCmd> display_list_;
     std::unique_ptr<HTMLNode> nodes_;
 };

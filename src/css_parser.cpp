@@ -6,18 +6,6 @@
 #include <memory>
 #include <string_view>
 
-bool matches_any(const Selector& sel, const HTMLNode& node) {
-    return std::visit(
-        [&node]<typename T>(const T& arg) -> bool {
-            if constexpr (std::is_same_v<T, std::unique_ptr<DescendantSelector>>) {
-                return arg->matches(node);
-            } else {
-                return arg.matches(node);
-            }
-        },
-        sel);
-}
-
 bool TagSelector::matches(const HTMLNode& node) const {
     auto* el = std::get_if<Element>(&node.data);
     return el && el->tag == tag_;
@@ -29,15 +17,25 @@ DescendantSelector::DescendantSelector(Selector ancestor, TagSelector descendant
 }
 
 bool DescendantSelector::matches(const HTMLNode& node) const {
-    if (!matches_any(descendant_, node)) return false;
+    if (!descendant_.matches(node)) return false;
 
-    const HTMLNode* curr = node.parent;
-    while (curr) {
+    for (const HTMLNode* curr = node.parent; curr != nullptr; curr = curr->parent) {
         if (matches_any(ancestor_, *curr)) return true;
-        curr = curr->parent;
     }
 
     return false;
+}
+
+bool matches_any(const Selector& sel, const HTMLNode& node) {
+    return std::visit(
+        [&node](const auto& arg) {
+            if constexpr (requires { *arg; }) {
+                return arg->matches(node);
+            } else {
+                return arg.matches(node);
+            }
+        },
+        sel);
 }
 
 void CSSParser::whitespace() {

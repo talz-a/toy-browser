@@ -34,7 +34,7 @@ void BlockLayout::layout() {
 
     auto mode = get_layout_mode();
 
-    if (mode == LayoutMode::block) {
+    if (mode == LayoutMode::Block) {
         BlockLayout* previous = nullptr;
 
         for (const auto& child : node_->children) {
@@ -101,17 +101,10 @@ void BlockLayout::flush() {
     line_.clear();
 }
 
-std::vector<draw_cmds> BlockLayout::paint() {
-    std::vector<draw_cmds> cmds;
+std::vector<DrawCmd> BlockLayout::paint() {
+    std::vector<DrawCmd> cmds;
 
     if (auto* el = std::get_if<Element>(&node_->data)) {
-        // if (el->tag == "pre") {
-        //     float x2 = x_ + width_;
-        //     float y2 = y_ + height_;
-        //     constexpr auto gray = sf::Color{217, 217, 217};
-        //     cmds.emplace_back(draw_rect(x_, y_, x2, y2, gray));
-        // }
-
         std::string bgcolor = "transparent";
         if (node_->style.contains("background-color")) {
             bgcolor = node_->style.at("background-color");
@@ -120,13 +113,13 @@ std::vector<draw_cmds> BlockLayout::paint() {
         if (bgcolor != "transparent") {
             float x2 = x_ + width_;
             float y2 = y_ + height_;
-            cmds.emplace_back(draw_rect(x_, y_, x2, y2, parse_color(bgcolor)));
+            cmds.emplace_back(DrawRect(x_, y_, x2, y2, parse_color(bgcolor)));
         }
     }
 
-    if (get_layout_mode() == LayoutMode::inline_context) {
+    if (get_layout_mode() == LayoutMode::InlineContext) {
         for (auto& [x, y, word] : display_list_) {
-            cmds.emplace_back(draw_text(x, y, std::move(word)));
+            cmds.emplace_back(DrawText(x, y, std::move(word)));
         }
     }
 
@@ -135,23 +128,19 @@ std::vector<draw_cmds> BlockLayout::paint() {
 
 LayoutMode BlockLayout::get_layout_mode() const {
     return std::visit(
-        [&](auto&& arg)->enum LayoutMode {
-            using T = std::decay_t<decltype(arg)>;
-
+        [&]<typename T>(const T& arg) -> LayoutMode {
             if constexpr (std::is_same_v<T, Text>) {
-                return LayoutMode::inline_context;
+                return LayoutMode::InlineContext;
             } else if constexpr (std::is_same_v<T, Element>) {
-                bool has_block_child = std::ranges::any_of(node_->children, [](const auto& child) {
-                    if (auto* el = std::get_if<Element>(&child->data)) {
-                        return std::ranges::contains(block_elements_, el->tag);
-                    }
-                    return false;
+                bool has_block_child = std::ranges::any_of(node_->children, [&](const auto& child) {
+                    auto* el = std::get_if<Element>(&child->data);
+                    return el && std::ranges::contains(block_elements_, el->tag);
                 });
 
-                if (has_block_child) return LayoutMode::block;
+                if (has_block_child) return LayoutMode::Block;
             }
 
-            return node_->children.empty() ? LayoutMode::block : LayoutMode::inline_context;
+            return node_->children.empty() ? LayoutMode::Block : LayoutMode::InlineContext;
         },
         node_->data);
 }
@@ -162,13 +151,13 @@ void BlockLayout::recurse(const HTMLNode* node) {
     std::visit(
         [&]<typename T>(const T& arg) {
             if constexpr (std::is_same_v<T, Text>) {
-                // We should be spliting on \n's and \t's like python does, but since C++
-                // split does not, we need to normalize it here.
-                std::string text = arg.text;
-                std::ranges::replace_if(text, [](unsigned char c) { return std::isspace(c); }, ' ');
-                for (const auto& w : std::views::split(text, ' ')) {
-                    if (w.empty()) continue;
-                    word(*node, std::ranges::to<std::string>(w));
+                // @NOTE: We use stream extraction here to perfectly mimic Python's string.split().
+                // The stream automatically normalizes the text by skipping over \n, \t,
+                // and collapsing consecutive whitespace.
+                std::istringstream iss(arg.text);
+
+                for (auto w : std::views::istream<std::string>(iss)) {
+                    word(*node, std::move(w));
                 }
 
             } else if constexpr (std::is_same_v<T, Element>) {

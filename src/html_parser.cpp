@@ -1,9 +1,8 @@
+#include <algorithm>
 #include <browser/html_parser.hpp>
 #include <browser/utils.hpp>
-#include <algorithm>
 #include <ranges>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 std::unique_ptr<HTMLNode> HTMLParser::parse() {
@@ -29,7 +28,6 @@ std::unique_ptr<HTMLNode> HTMLParser::parse() {
 }
 
 void HTMLParser::add_text(std::string_view text) {
-    auto is_space = [](unsigned char c) { return std::isspace(c); };
     if (std::ranges::all_of(text, is_space)) return;
 
     implicit_tags();
@@ -85,12 +83,10 @@ std::pair<Tag, Attributes> HTMLParser::parse_attributes(std::string_view text) {
     Attributes attributes;
     if (text.empty()) return {"", attributes};
 
-    auto is_space = [](unsigned char c) { return std::isspace(c); };
-
     // 1. Extract the tag name.
     auto tag_end = std::ranges::find_if(text, is_space);
     std::string tag = to_lower(std::string_view(text.begin(), tag_end));
-    
+
     text = std::string_view(tag_end, text.end());
 
     // 2. Parse the attributes.
@@ -100,29 +96,28 @@ std::pair<Tag, Attributes> HTMLParser::parse_attributes(std::string_view text) {
         if (text.empty()) break;
 
         // Find the end of the key.
-        auto key_end = std::ranges::find_if(text, [](unsigned char c) {
-            return std::isspace(c) || c == '=';
-        });
-        
+        auto key_end =
+            std::ranges::find_if(text, [](unsigned char c) { return std::isspace(c) || c == '='; });
+
         std::string key = to_lower(std::string_view(text.begin(), key_end));
         text = std::string_view(key_end, text.end());
 
         std::string value;
-        
+
         // If there's an '=', parse the value.
         if (!text.empty() && text.front() == '=') {
             // Drop the '='.
             text.remove_prefix(1);
-            
+
             if (!text.empty() && (text.front() == '"' || text.front() == '\'')) {
                 const char quote = text.front();
-                text.remove_prefix(1); // Drop opening quote.
-                
+                text.remove_prefix(1);  // Drop opening quote.
+
                 auto val_end = std::ranges::find(text, quote);
                 value = std::string(text.begin(), val_end);
-                
+
                 text = std::string_view(val_end, text.end());
-                if (!text.empty()) text.remove_prefix(1); // Drop closing quote.
+                if (!text.empty()) text.remove_prefix(1);  // Drop closing quote.
             } else {
                 // Unquoted value.
                 auto val_end = std::ranges::find_if(text, is_space);
@@ -141,14 +136,12 @@ std::pair<Tag, Attributes> HTMLParser::parse_attributes(std::string_view text) {
 
 void HTMLParser::implicit_tags(std::optional<std::string_view> tag) {
     while (true) {
-        const auto open_tags = unfinished_ 
-                               | std::views::filter([](auto&& node) {
-                                   return std::holds_alternative<Element>(node->data);
-                               }) 
-                               | std::views::transform([](auto&& node) {
-                                   return std::get<Element>(node->data).tag;
-                               }) 
-                               | std::ranges::to<std::vector>();
+        const auto open_tags =
+            unfinished_ | std::views::filter([](auto&& node) {
+                return std::holds_alternative<Element>(node->data);
+            }) |
+            std::views::transform([](auto&& node) { return std::get<Element>(node->data).tag; }) |
+            std::ranges::to<std::vector>();
 
         // 1. If empty and first tag isn't <html>, add <html>.
         if (open_tags.empty() && tag != "html") {

@@ -1,10 +1,10 @@
 #pragma once
 
-#include <browser/utils.hpp>
 #include <asio.hpp>
 #include <asio/ssl.hpp>
-#include <string_view>
+#include <browser/utils.hpp>
 #include <expected>
+#include <string_view>
 
 static constexpr uint16_t HTTP_PORT = 80;
 static constexpr uint16_t HTTPS_PORT = 443;
@@ -17,7 +17,8 @@ struct Url {
     [[nodiscard]] std::expected<Url, std::string> resolve(std::string_view url) const;
 
     template <typename Stream>
-    std::expected<std::string, std::string> send_request(Stream& stream, std::string_view request_text) const {
+    std::expected<std::string, std::string> send_request(Stream& stream,
+                                                         std::string_view request_text) const {
         asio::error_code ec;
 
         asio::write(stream, asio::buffer(request_text), ec);
@@ -72,10 +73,8 @@ struct Url {
             return std::unexpected(std::format("ERROR: Body read failed: {}.", ec.message()));
         }
 
-        return std::string{
-            asio::buffers_begin(response_buffer.data()), 
-            asio::buffers_end(response_buffer.data())
-        };
+        return std::string{asio::buffers_begin(response_buffer.data()),
+                           asio::buffers_end(response_buffer.data())};
     }
 
     std::string scheme_;
