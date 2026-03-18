@@ -8,6 +8,16 @@
 #include <string>
 #include <vector>
 
+using namespace std::literals;
+
+static constexpr std::array BLOCK_ELEMENTS = {
+    "html"sv,       "body"sv,    "article"sv, "section"sv, "nav"sv,  "aside"sv,      "h1"sv,
+    "h2"sv,         "h3"sv,      "h4"sv,      "h5"sv,      "h6"sv,   "hgroup"sv,     "header"sv,
+    "footer"sv,     "address"sv, "p"sv,       "hr"sv,      "pre"sv,  "blockquote"sv, "ol"sv,
+    "ul"sv,         "menu"sv,    "li"sv,      "dl"sv,      "dt"sv,   "dd"sv,         "figure"sv,
+    "figcaption"sv, "main"sv,    "div"sv,     "table"sv,   "form"sv, "fieldset"sv,   "legend"sv,
+    "details"sv,    "summary"sv};
+
 struct RenderItem {
     float x{}, y{};
     sf::Text text;
@@ -67,11 +77,4 @@ struct BlockLayout {
 
     // Stored as pointer to allow assignment/copying.
     const sf::Font* font_;
-
-    static constexpr auto block_elements_ = std::to_array(
-        {"html", "body",     "article", "section",    "nav",        "aside",  "h1",     "h2",
-         "h3",   "h4",       "h5",      "h6",         "hgroup",     "header", "footer", "address",
-         "p",    "hr",       "pre",     "blockquote", "ol",         "ul",     "menu",   "li",
-         "dl",   "dt",       "dd",      "figure",     "figcaption", "main",   "div",    "table",
-         "form", "fieldset", "legend",  "details",    "summary"});
 };

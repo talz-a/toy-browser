@@ -134,7 +134,7 @@ LayoutMode BlockLayout::get_layout_mode() const {
             } else if constexpr (std::is_same_v<T, Element>) {
                 bool has_block_child = std::ranges::any_of(node_->children, [&](const auto& child) {
                     auto* el = std::get_if<Element>(&child->data);
-                    return el && std::ranges::contains(block_elements_, el->tag);
+                    return el && std::ranges::contains(BLOCK_ELEMENTS, el->tag);
                 });
 
                 if (has_block_child) return LayoutMode::Block;
