@@ -113,6 +113,7 @@ void style(HTMLNode& node, const std::vector<CSSRule>& rules) {
     }
 }
 
+// @TODO: Move this to a better place.
 void paint_tree(const LayoutParent& layout_object, std::vector<DrawCmd>& display_list) {
     display_list.append_range(std::visit([](auto&& arg) { return arg->paint(); }, layout_object));
 

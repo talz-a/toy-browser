@@ -3,7 +3,6 @@
 
 void DrawText::execute(float scroll, sf::RenderWindow& window) {
     text_.setPosition({left_, top_ - scroll});
-    // text_.setFillColor(sf::Color::Black);
     window.draw(text_);
 }
 
