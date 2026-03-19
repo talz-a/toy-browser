@@ -10,6 +10,10 @@ class FontCache {
 public:
     // Destructor: Cleans up all cached fonts when the browser closes
     ~FontCache() {
+        clear();
+    }
+
+    void clear() {
         for (auto& [key, font] : fonts_) {
             if (font) TTF_CloseFont(font);
         }
@@ -42,6 +46,7 @@ public:
         if (style == "italic") sdl_style |= TTF_STYLE_ITALIC;
 
         TTF_SetFontStyle(new_font, sdl_style);
+        TTF_SetFontHinting(new_font, TTF_HINTING_LIGHT);
 
         // Store it in the cache (the C++ equivalent of FONTS[key] = font)
         fonts_[key] = new_font;

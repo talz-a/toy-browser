@@ -135,11 +135,13 @@ Browser::Browser() {
     }
 
     if (!SDL_CreateWindowAndRenderer(
-            "Toy Browser", 640, 480, SDL_WINDOW_RESIZABLE, &window_, &renderer_)) {
+            "Toy Browser", 640, 480, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY, &window_, &renderer_)) {
         SDL_Quit();
         throw std::runtime_error(
             std::format("Couldn't create window/renderer: {}", SDL_GetError()));
     }
+
+    SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_BLEND);
 
     if (!TTF_Init()) {
         SDL_DestroyRenderer(renderer_);
@@ -167,19 +169,23 @@ Browser::~Browser() {
     }
     display_list_.clear();
 
-    // 2. Destroy the text engine (must happen before destroying the renderer)
+    // 2. Clear any other SDL_ttf resources before shutting down.
+    document_.reset();
+    font_cache_.clear();
+
+    // 3. Destroy the text engine (must happen before destroying the renderer)
     if (text_engine_) {
         TTF_DestroyRendererTextEngine(text_engine_);
     }
 
-    // 3. Quit the TTF subsystem
+    // 4. Quit the TTF subsystem
     TTF_Quit();
 
-    // 4. Destroy core SDL resources
+    // 5. Destroy core SDL resources
     if (renderer_) SDL_DestroyRenderer(renderer_);
     if (window_) SDL_DestroyWindow(window_);
 
-    // 5. Quit SDL
+    // 6. Quit SDL
     SDL_Quit();
 }
 
