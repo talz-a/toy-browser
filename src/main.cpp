@@ -1,4 +1,3 @@
-#include <SFML/Graphics.hpp>
 #include <browser/browser.hpp>
 #include <browser/url.hpp>
 #include <cstdlib>

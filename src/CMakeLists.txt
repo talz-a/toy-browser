@@ -11,14 +11,16 @@ add_executable(toy-browser
 
 target_include_directories(toy-browser PRIVATE "${PROJECT_SOURCE_DIR}/include")
 
-find_package(asio REQUIRED)
-find_package(OpenSSL REQUIRED)
-find_package(SFML REQUIRED COMPONENTS Graphics)
+find_package(asio CONFIG REQUIRED)
+find_package(OpenSSL CONFIG REQUIRED)
+find_package(SDL3 CONFIG REQUIRED)
+find_package(SDL3_ttf CONFIG REQUIRED)
 
 target_link_libraries(toy-browser PRIVATE 
     asio::asio 
     OpenSSL::SSL 
-    SFML::Graphics
+    SDL3::SDL3
+    SDL3_ttf::SDL3_ttf
 )
 
 target_compile_definitions(toy-browser PRIVATE ASIO_STANDALONE)

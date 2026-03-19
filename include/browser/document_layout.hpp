@@ -1,12 +1,17 @@
 #pragma once
 
+#include <SDL3_ttf/SDL_ttf.h>
 #include <browser/block_layout.hpp>
 #include <browser/draw_commands.hpp>
+#include <browser/font_cache.hpp>
 #include <browser/html_parser.hpp>
 
 struct DocumentLayout {
-    DocumentLayout(const HTMLNode* n, const sf::Font& font, float width)
-        : node_{n}, font_{&font}, width_{width} {}
+    DocumentLayout(const HTMLNode* n,
+                   TTF_TextEngine* text_engine,
+                   FontCache* font_cache,
+                   float width)
+        : node_{n}, text_engine_{text_engine}, font_cache_{font_cache}, width_{width} {}
 
     void layout();
 
@@ -23,6 +28,6 @@ struct DocumentLayout {
     float x_{};
     float y_{};
 
-    // Stored as pointer to allow assignment/copying.
-    const sf::Font* font_;
+    FontCache* font_cache_;
+    TTF_TextEngine* text_engine_;
 };

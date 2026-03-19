@@ -1,9 +1,10 @@
 #pragma once
 
-#include <SFML/Graphics.hpp>
+#include <SDL3_ttf/SDL_ttf.h>
 #include <array>
 #include <browser/constants.hpp>
 #include <browser/draw_commands.hpp>
+#include <browser/font_cache.hpp>
 #include <browser/html_parser.hpp>
 #include <string>
 #include <vector>
@@ -20,12 +21,13 @@ static constexpr std::array BLOCK_ELEMENTS = {
 
 struct RenderItem {
     float x{}, y{};
-    sf::Text text;
+    TTF_Text* text = nullptr;
 };
 
 struct LineItem {
     float x{};
-    sf::Text text;
+    TTF_Text* text = nullptr;
+    TTF_Font* font = nullptr;
 };
 
 enum class LayoutMode : std::uint8_t {
@@ -41,17 +43,20 @@ struct BlockLayout {
     BlockLayout(const HTMLNode* n,
                 LayoutParent parent,
                 const BlockLayout* previous,
-                const sf::Font& font,
+                TTF_TextEngine* text_engine,
+                FontCache* font_cache,
                 float width)
-        : node_{n}, parent_{parent}, previous_{previous}, font_{&font}, width_{width} {}
+        : node_{n},
+          parent_{parent},
+          previous_{previous},
+          text_engine_{text_engine},
+          font_cache_{font_cache},
+          width_{width} {}
 
     void layout();
     void flush();
 
     [[nodiscard]] std::vector<DrawCmd> paint();
-
-    [[nodiscard]] float get_ascent(const sf::Font& font, unsigned int size) const;
-    [[nodiscard]] float get_descent(const sf::Font& font, unsigned int size) const;
 
     [[nodiscard]] LayoutMode get_layout_mode() const;
 
@@ -75,6 +80,6 @@ struct BlockLayout {
     float y_{};
     float height_{};
 
-    // Stored as pointer to allow assignment/copying.
-    const sf::Font* font_;
+    FontCache* font_cache_;
+    TTF_TextEngine* text_engine_;
 };

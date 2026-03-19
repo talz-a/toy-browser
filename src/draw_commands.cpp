@@ -1,14 +1,11 @@
-#include <SFML/Graphics.hpp>
 #include <browser/draw_commands.hpp>
 
-void DrawText::execute(float scroll, sf::RenderWindow& window) {
-    text_.setPosition({left_, top_ - scroll});
-    window.draw(text_);
+void DrawRect::execute(float scroll, SDL_Renderer* renderer) const {
+    SDL_SetRenderDrawColor(renderer, color_.r, color_.g, color_.b, color_.a);
+    SDL_FRect rect{.x = left_, .y = top_ - scroll, .w = right_ - left_, .h = bottom_ - top_};
+    SDL_RenderFillRect(renderer, &rect);
 }
 
-void DrawRect::execute(float scroll, sf::RenderWindow& window) {
-    sf::RectangleShape bg({right_ - left_, bottom_ - top_});
-    bg.setPosition({left_, top_ - scroll});
-    bg.setFillColor(color_);
-    window.draw(bg);
+void DrawText::execute(float scroll, SDL_Renderer* renderer) const {
+    TTF_DrawRendererText(text_, left_, top_ - scroll);
 }

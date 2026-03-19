@@ -1,10 +1,13 @@
 #pragma once
 
-#include <SFML/Graphics.hpp>
+#include <SDL3/SDL.h>
 #include <algorithm>
 #include <fstream>
 #include <ranges>
+#include <sstream>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 // @TODO: Maybe move this to a better place. Make sure to double check this works when using it with
 // BlockLayout.
@@ -39,24 +42,24 @@ inline void to_lower_inplace(std::string& str) {
     std::ranges::transform(str, str.begin(), [](unsigned char c) { return std::tolower(c); });
 }
 
-inline sf::Color parse_color(const std::string& name) {
-    static const std::unordered_map<std::string, sf::Color> colors = {
-        {"red", sf::Color::Red},
-        {"green", sf::Color::Green},
-        {"blue", sf::Color::Blue},
-        {"lightblue", sf::Color::Blue},
-        {"black", sf::Color::Black},
-        {"gray", sf::Color(192, 192, 192)},
-        {"#ddd", sf::Color(192, 192, 192)},
-        {"white", sf::Color::White},
-        {"yellow", sf::Color::Yellow},
-        {"magenta", sf::Color::Magenta},
-        {"cyan", sf::Color::Cyan}};
+inline SDL_Color parse_color(const std::string& name) {
+    static const std::unordered_map<std::string, SDL_Color> colors = {
+        {"red", {255, 0, 0, 255}},
+        {"green", {0, 255, 0, 255}},
+        {"blue", {0, 0, 255, 255}},
+        {"lightblue", {173, 216, 230, 255}},
+        {"black", {0, 0, 0, 255}},
+        {"gray", {192, 192, 192, 255}},
+        {"#ddd", {221, 221, 221, 255}},
+        {"white", {255, 255, 255, 255}},
+        {"yellow", {255, 255, 0, 255}},
+        {"magenta", {255, 0, 255, 255}},
+        {"cyan", {0, 255, 255, 255}}};
 
     auto it = colors.find(name);
     if (it != colors.end()) {
         return it->second;
     }
 
-    return sf::Color::White;
+    return {255, 255, 255, 255};
 }

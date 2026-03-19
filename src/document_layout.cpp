@@ -7,7 +7,8 @@ void DocumentLayout::layout() {
     x_ = constants::h_step;
     y_ = constants::v_step;
 
-    auto child = std::make_unique<BlockLayout>(node_, this, nullptr, *font_, width_);
+    auto child =
+        std::make_unique<BlockLayout>(node_, this, nullptr, text_engine_, font_cache_, width_);
     child->layout();
 
     // Set height before moving.
