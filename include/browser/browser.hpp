@@ -16,6 +16,7 @@ struct Browser {
     std::expected<void, std::string> load(const Url& target_url);
 
     void run();
+    void reflow();
     void process_events();
     void render();
 

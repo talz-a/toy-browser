@@ -1,6 +1,7 @@
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_oldnames.h>
 #include <SDL3_ttf/SDL_ttf.h>
+#include <algorithm>
 #include <browser/browser.hpp>
 #include <browser/constants.hpp>
 #include <browser/css_parser.hpp>
@@ -128,20 +129,22 @@ void paint_tree(const LayoutParent& layout_object, std::vector<DrawCmd>& display
     }
 }
 
-// @TODO: Move away from throwing here in the future.
+// @TODO: Move away from throwing here.
 Browser::Browser() {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         throw std::runtime_error(std::format("Couldn't initialize SDL: {}", SDL_GetError()));
     }
 
-    if (!SDL_CreateWindowAndRenderer(
-            "Toy Browser", 640, 480, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY, &window_, &renderer_)) {
+    if (!SDL_CreateWindowAndRenderer("Toy Browser",
+                                     640,
+                                     480,
+                                     SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY,
+                                     &window_,
+                                     &renderer_)) {
         SDL_Quit();
         throw std::runtime_error(
             std::format("Couldn't create window/renderer: {}", SDL_GetError()));
     }
-
-    SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_BLEND);
 
     if (!TTF_Init()) {
         SDL_DestroyRenderer(renderer_);
@@ -244,41 +247,56 @@ std::expected<void, std::string> Browser::load(const Url& url) {
     // Debug print;
     // print_tree(*nodes_);
 
-    int w, h;
-    SDL_GetWindowSize(window_, &w, &h);
-
-    document_.emplace(
-        DocumentLayout(nodes_.get(), text_engine_, &font_cache_, static_cast<float>(w)));
-
-    document_->layout();
-
     // Debug print;
     // if (!document_->children_.empty()) {
     //     print_layout_tree(*document_->children_.front());
     // }
 
-    // Clean up all the TTF_Text pointers manually
-    for (auto& cmd : display_list_) {
-        if (auto* draw_text = std::get_if<DrawText>(&cmd)) {
-            TTF_DestroyText(draw_text->text_);
-        }
-    }
-    display_list_.clear();
-    paint_tree(&*document_, display_list_);
-
+    reflow();
     return {};
 }
 
+void Browser::reflow() {
+    if (!nodes_) return;
+
+    // 1. Determine new bounds
+    int w, h;
+    SDL_GetWindowSize(window_, &w, &h);
+
+    // 2. Manual Cleanup: Destroy C-style text resources
+    // This is the "inline" version of your display list cleanup
+    for (auto& cmd : display_list_) {
+        if (auto* draw_text = std::get_if<DrawText>(&cmd)) {
+            if (draw_text->text_) {
+                TTF_DestroyText(draw_text->text_);
+            }
+        }
+    }
+    display_list_.clear();
+
+    // 3. Recalculate Layout
+    // emplace() calls the DocumentLayout constructor in-place
+    document_.emplace(nodes_.get(), text_engine_, &font_cache_, static_cast<float>(w));
+    document_->layout();
+
+    // 4. Re-paint the tree into the now-empty display_list_
+    paint_tree(&*document_, display_list_);
+
+    // 5. Clamp scroll_ to the new document height
+    float max_y =
+        std::max(document_->height_ + 2 * constants::v_step - static_cast<float>(h), 0.0f);
+    scroll_ = std::clamp(scroll_, 0.0f, max_y);
+}
+
 void Browser::process_events() {
-    bool needs_resize = false;
+    bool needs_reflow = false;
     SDL_Event event;
 
-    // Use a single SDL event loop
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_EVENT_QUIT) {
             is_running_ = false;
         } else if (event.type == SDL_EVENT_WINDOW_RESIZED) {
-            needs_resize = true;
+            needs_reflow = true;
         } else if (event.type == SDL_EVENT_KEY_DOWN) {
             if (event.key.key == SDLK_DOWN) {
                 if (!document_) continue;
@@ -288,6 +306,7 @@ void Browser::process_events() {
 
                 float max_y = std::max(
                     document_->height_ + 2 * constants::v_step - static_cast<float>(h), 0.0f);
+
                 scroll_ = std::min(scroll_ + constants::scroll_step, max_y);
 
             } else if (event.key.key == SDLK_UP) {
@@ -296,26 +315,7 @@ void Browser::process_events() {
         }
     }
 
-    if (needs_resize) {
-        // @TODO: All this can be refactored into a single function.
-        int w, h;
-        SDL_GetWindowSize(window_, &w, &h);
-
-        document_.emplace(
-            DocumentLayout(nodes_.get(), text_engine_, &font_cache_, static_cast<float>(w)));
-
-        document_->layout();
-
-        // Clean up all the TTF_Text pointers manually
-        for (auto& cmd : display_list_) {
-            if (auto* draw_text = std::get_if<DrawText>(&cmd)) {
-                TTF_DestroyText(draw_text->text_);
-            }
-        }
-        display_list_.clear();
-
-        if (document_) paint_tree(&*document_, display_list_);
-    }
+    if (needs_reflow) reflow();
 }
 
 void Browser::render() {
