@@ -45,13 +45,15 @@ struct BlockLayout {
                 const BlockLayout* previous,
                 TTF_TextEngine* text_engine,
                 FontCache* font_cache,
-                float width)
+                float width,
+                float scale)
         : node_{n},
           parent_{parent},
           previous_{previous},
           text_engine_{text_engine},
           font_cache_{font_cache},
-          width_{width} {}
+          width_{width},
+          scale_{scale} {}
 
     void layout();
     void flush();
@@ -68,6 +70,7 @@ struct BlockLayout {
     LayoutParent parent_;
     const BlockLayout* previous_ = nullptr;
     float width_;
+    float scale_;
 
     std::vector<std::unique_ptr<BlockLayout>> children_;
     std::vector<LineItem> line_;

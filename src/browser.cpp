@@ -261,7 +261,8 @@ void Browser::reflow() {
 
     // 1. Determine new bounds
     int w, h;
-    SDL_GetWindowSize(window_, &w, &h);
+    SDL_GetWindowSizeInPixels(window_, &w, &h);
+    const float scale = SDL_GetWindowPixelDensity(window_);
 
     // 2. Manual Cleanup: Destroy C-style text resources
     // This is the "inline" version of your display list cleanup
@@ -276,7 +277,7 @@ void Browser::reflow() {
 
     // 3. Recalculate Layout
     // emplace() calls the DocumentLayout constructor in-place
-    document_.emplace(nodes_.get(), text_engine_, &font_cache_, static_cast<float>(w));
+    document_.emplace(nodes_.get(), text_engine_, &font_cache_, static_cast<float>(w), scale);
     document_->layout();
 
     // 4. Re-paint the tree into the now-empty display_list_
@@ -284,7 +285,7 @@ void Browser::reflow() {
 
     // 5. Clamp scroll_ to the new document height
     float max_y =
-        std::max(document_->height_ + 2 * constants::v_step - static_cast<float>(h), 0.0f);
+        std::max(document_->height_ + 2 * constants::v_step * scale - static_cast<float>(h), 0.0f);
     scroll_ = std::clamp(scroll_, 0.0f, max_y);
 }
 
@@ -295,22 +296,27 @@ void Browser::process_events() {
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_EVENT_QUIT) {
             is_running_ = false;
-        } else if (event.type == SDL_EVENT_WINDOW_RESIZED) {
+        } else if (event.type == SDL_EVENT_WINDOW_RESIZED ||
+                   event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED ||
+                   event.type == SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED) {
             needs_reflow = true;
         } else if (event.type == SDL_EVENT_KEY_DOWN) {
             if (event.key.key == SDLK_DOWN) {
                 if (!document_) continue;
 
                 int w, h;
-                SDL_GetWindowSize(window_, &w, &h);
+                SDL_GetWindowSizeInPixels(window_, &w, &h);
+                const float scale = SDL_GetWindowPixelDensity(window_);
 
                 float max_y = std::max(
-                    document_->height_ + 2 * constants::v_step - static_cast<float>(h), 0.0f);
+                    document_->height_ + 2 * constants::v_step * scale - static_cast<float>(h),
+                    0.0f);
 
-                scroll_ = std::min(scroll_ + constants::scroll_step, max_y);
+                scroll_ = std::min(scroll_ + constants::scroll_step * scale, max_y);
 
             } else if (event.key.key == SDLK_UP) {
-                scroll_ = std::max(0.f, scroll_ - constants::scroll_step);
+                const float scale = SDL_GetWindowPixelDensity(window_);
+                scroll_ = std::max(0.f, scroll_ - constants::scroll_step * scale);
             }
         }
     }
@@ -323,7 +329,7 @@ void Browser::render() {
     SDL_RenderClear(renderer_);
 
     int w, h;
-    SDL_GetWindowSize(window_, &w, &h);
+    SDL_GetWindowSizeInPixels(window_, &w, &h);
 
     for (auto& cmd : display_list_) {
         std::visit(

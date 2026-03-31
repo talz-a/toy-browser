@@ -10,8 +10,13 @@ struct DocumentLayout {
     DocumentLayout(const HTMLNode* n,
                    TTF_TextEngine* text_engine,
                    FontCache* font_cache,
-                   float width)
-        : node_{n}, text_engine_{text_engine}, font_cache_{font_cache}, width_{width} {}
+                   float width,
+                   float scale)
+        : node_{n},
+          width_{width},
+          scale_{scale},
+          font_cache_{font_cache},
+          text_engine_{text_engine} {}
 
     void layout();
 
@@ -20,6 +25,7 @@ struct DocumentLayout {
     const HTMLNode* node_;
     const BlockLayout* parent_ = nullptr;
     float width_;
+    float scale_;
 
     std::vector<std::unique_ptr<BlockLayout>> children_;
     std::vector<DrawCmd> display_list_;

@@ -25,7 +25,7 @@ void BlockLayout::layout() {
         for (const auto& child : node_->children) {
             // Create new child layout.
             auto next = std::make_unique<BlockLayout>(
-                child.get(), this, previous, text_engine_, font_cache_, width_);
+                child.get(), this, previous, text_engine_, font_cache_, width_, scale_);
 
             // Get a raw pointer to use as 'previous' for next layout.
             previous = next.get();
@@ -67,7 +67,7 @@ void BlockLayout::flush() {
         max_descent = std::max(max_descent, descent);
     }
 
-    const float baseline = cursor_y_ + constants::line_height_multiplier * max_ascent;
+    const float baseline = cursor_y_ + (constants::line_height_multiplier * max_ascent);
 
     // 3. Position each text object and hand it off to the display list
     for (auto& item : line_) {
@@ -163,7 +163,7 @@ void BlockLayout::word(const HTMLNode& node, const std::string& word_text) {
     if (style == "normal") style = "roman";
 
     float fs_px = std::stof(node.style.at("font-size"));
-    int size_pt = static_cast<int>(fs_px * 1.25f);
+    int size_pt = static_cast<int>(fs_px * scale_ * 1.25f);
 
     TTF_Font* current_font = font_cache_->get_font(size_pt, weight, style);
 
