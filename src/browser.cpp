@@ -154,6 +154,7 @@ Browser::Browser() {
     }
 
     text_engine_ = TTF_CreateRendererTextEngine(renderer_);
+
     if (!text_engine_) {
         TTF_Quit();
         SDL_DestroyRenderer(renderer_);
@@ -166,7 +167,7 @@ Browser::Browser() {
 Browser::~Browser() {
     // 1. Clean up all the TTF_Text pointers in the display list
     for (auto& cmd : display_list_) {
-        if (auto* draw_text = std::get_if<DrawText>(&cmd)) {
+        if (auto* draw_text = std::get_if<DrawTextCmd>(&cmd)) {
             TTF_DestroyText(draw_text->text_);
         }
     }
@@ -267,7 +268,7 @@ void Browser::reflow() {
     // 2. Manual Cleanup: Destroy C-style text resources
     // This is the "inline" version of your display list cleanup
     for (auto& cmd : display_list_) {
-        if (auto* draw_text = std::get_if<DrawText>(&cmd)) {
+        if (auto* draw_text = std::get_if<DrawTextCmd>(&cmd)) {
             if (draw_text->text_) {
                 TTF_DestroyText(draw_text->text_);
             }

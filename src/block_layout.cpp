@@ -99,13 +99,13 @@ std::vector<DrawCmd> BlockLayout::paint() {
         if (bgcolor != "transparent") {
             float x2 = x_ + width_;
             float y2 = y_ + height_;
-            cmds.emplace_back(DrawRect(x_, y_, x2, y2, parse_color(bgcolor)));
+            cmds.emplace_back(DrawRectCmd(x_, y_, x2, y2, parse_color(bgcolor)));
         }
     }
 
     if (get_layout_mode() == LayoutMode::InlineContext) {
         for (auto& [x, y, word_ptr] : display_list_) {
-            cmds.emplace_back(DrawText(x, y, word_ptr));
+            cmds.emplace_back(DrawTextCmd(x, y, word_ptr));
         }
     }
 

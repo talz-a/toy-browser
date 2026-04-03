@@ -29,7 +29,7 @@ struct FontCache {
         }
 
         TTF_Font* new_font =
-            TTF_OpenFont("assets/Inter-VariableFont.ttf", static_cast<float>(size));
+            TTF_OpenFont("assets/segoeui.ttf", static_cast<float>(size));
 
         if (!new_font) {
             std::println(stderr, "Warning: Failed to load font size {}", size);

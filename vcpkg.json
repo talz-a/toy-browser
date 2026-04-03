@@ -8,10 +8,16 @@
     },
     {
       "name": "sdl3",
-      "default-features": false,
+      "default-features": true,
       "features": [
-        "wayland",
-        "x11"
+        {
+          "name": "wayland",
+          "platform": "linux"
+        },
+        {
+          "name": "x11",
+          "platform": "linux"
+        }
       ]
     },
     "sdl3-ttf"

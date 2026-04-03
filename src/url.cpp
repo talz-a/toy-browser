@@ -1,5 +1,6 @@
 #include <openssl/ssl.h>
 #include <browser/url.hpp>
+#include <filesystem>
 #include <format>
 
 std::expected<Url, std::string> Url::parse_url(std::string_view url) {
@@ -63,6 +64,18 @@ std::expected<std::string, std::string> Url::request() const {
         ec = ctx.set_default_verify_paths(ec);
         if (ec) {
             return std::unexpected(std::format("ERROR: Connection failed: {}.", ec.message()));
+        }
+
+        // On Windows, default verify paths often trust no CAs; load Mozilla bundle from assets
+        // when checked in. Also helps minimal Linux images if cacert.pem is present.
+        namespace fs = std::filesystem;
+        for (const char* rel : {"assets/cacert.pem", "cacert.pem"}) {
+            std::error_code fs_ec;
+            if (fs::exists(rel, fs_ec)) {
+                asio::error_code load_ec;
+                ctx.load_verify_file(rel, load_ec);
+                if (!load_ec) break;
+            }
         }
 
         // Open a socket and connect to remote host.
