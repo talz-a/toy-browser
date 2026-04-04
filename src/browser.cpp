@@ -11,6 +11,7 @@
 #include <optional>
 #include <print>
 #include <string>
+#include <type_traits>
 #include <variant>
 #include <vector>
 
@@ -117,16 +118,38 @@ void style(HTMLNode& node, const std::vector<CSSRule>& rules) {
 }
 
 // @TODO: Move this to a better place.
-void paint_tree(const LayoutParent& layout_object, std::vector<DrawCmd>& display_list) {
-    display_list.append_range(std::visit([](auto&& arg) { return arg->paint(); }, layout_object));
+void paint_tree(BlockLayout* block, std::vector<DrawCmd>& display_list) {
+    display_list.append_range(block->paint());
 
-    for (const auto& child : std::visit(
-             [](auto&& arg) -> const std::vector<std::unique_ptr<BlockLayout>>& {
-                 return arg->children_;
-             },
-             layout_object)) {
-        paint_tree(child.get(), display_list);
+    if (block->get_layout_mode() == LayoutMode::Block) {
+        for (const auto& child : block->children_) {
+            paint_tree(child.get(), display_list);
+        }
+        return;
     }
+
+    for (auto& line : block->lines_) {
+        display_list.append_range(line->paint());
+        for (auto& word : line->children_) {
+            display_list.append_range(word->paint());
+        }
+    }
+}
+
+void paint_tree(const LayoutParent& layout_object, std::vector<DrawCmd>& display_list) {
+    std::visit(
+        [&]<typename T>(T* arg) {
+            if constexpr (std::is_same_v<T, DocumentLayout>) {
+                display_list.append_range(arg->paint());
+                for (const auto& child : arg->children_) {
+                    paint_tree(child.get(), display_list);
+                }
+            } else {
+                static_assert(std::is_same_v<T, BlockLayout>);
+                paint_tree(arg, display_list);
+            }
+        },
+        layout_object);
 }
 
 // @TODO: Move away from throwing here.

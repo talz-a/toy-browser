@@ -6,6 +6,7 @@
 #include <browser/draw_commands.hpp>
 #include <browser/font_cache.hpp>
 #include <browser/html_parser.hpp>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -19,17 +20,6 @@ static constexpr std::array BLOCK_ELEMENTS = {
     "figcaption"sv, "main"sv,    "div"sv,     "table"sv,   "form"sv, "fieldset"sv,   "legend"sv,
     "details"sv,    "summary"sv};
 
-struct RenderItem {
-    float x{}, y{};
-    TTF_Text* text = nullptr;
-};
-
-struct LineItem {
-    float x{};
-    TTF_Text* text = nullptr;
-    TTF_Font* font = nullptr;
-};
-
 enum class LayoutMode : std::uint8_t {
     Block,
     InlineContext,
@@ -37,6 +27,8 @@ enum class LayoutMode : std::uint8_t {
 
 struct DocumentLayout;
 struct BlockLayout;
+struct LineLayout;
+struct TextLayout;
 using LayoutParent = std::variant<DocumentLayout*, BlockLayout*>;
 
 struct BlockLayout {
@@ -55,8 +47,10 @@ struct BlockLayout {
           width_{width},
           scale_{scale} {}
 
+    ~BlockLayout();
+
     void layout();
-    void flush();
+    void new_line();
 
     [[nodiscard]] std::vector<DrawCmd> paint();
 
@@ -73,11 +67,9 @@ struct BlockLayout {
     float scale_;
 
     std::vector<std::unique_ptr<BlockLayout>> children_;
-    std::vector<LineItem> line_;
-    std::vector<RenderItem> display_list_;
+    std::vector<std::unique_ptr<LineLayout>> lines_;
 
     float cursor_x_ = constants::h_step;
-    float cursor_y_ = constants::v_step;
 
     float x_{};
     float y_{};
@@ -86,3 +78,48 @@ struct BlockLayout {
     FontCache* font_cache_;
     TTF_TextEngine* text_engine_;
 };
+
+struct LineLayout {
+    LineLayout(const HTMLNode* node, BlockLayout* parent, LineLayout* previous)
+        : node_{node}, parent_{parent}, previous_{previous} {}
+
+    void layout();
+
+    [[nodiscard]] std::vector<DrawCmd> paint() const { return {}; }
+
+    const HTMLNode* node_;
+    BlockLayout* parent_;
+    LineLayout* previous_;
+    std::vector<std::unique_ptr<TextLayout>> children_;
+
+    float x_{};
+    float y_{};
+    float width_{};
+    float height_{};
+};
+
+struct TextLayout {
+    TextLayout(const HTMLNode* node,
+               TTF_Text* text,
+               TTF_Font* font,
+               LineLayout* parent,
+               TextLayout* previous)
+        : node_{node}, text_{text}, font_{font}, parent_{parent}, previous_{previous} {}
+
+    void layout();
+
+    [[nodiscard]] std::vector<DrawCmd> paint() const;
+
+    const HTMLNode* node_;
+    TTF_Text* text_;
+    TTF_Font* font_;
+    LineLayout* parent_;
+    TextLayout* previous_;
+
+    float x_{};
+    float y_{};
+    float width_{};
+    float height_{};
+};
+
+inline BlockLayout::~BlockLayout() = default;
