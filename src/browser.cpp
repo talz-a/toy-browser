@@ -2,6 +2,7 @@
 #include <SDL3/SDL_oldnames.h>
 #include <SDL3_ttf/SDL_ttf.h>
 #include <algorithm>
+#include <cmath>
 #include <browser/browser.hpp>
 #include <browser/constants.hpp>
 #include <browser/css_parser.hpp>
@@ -14,6 +15,15 @@
 #include <type_traits>
 #include <variant>
 #include <vector>
+
+namespace {
+
+float window_display_scale(SDL_Window* window) {
+    float s = SDL_GetWindowDisplayScale(window);
+    return s > 0.f ? s : 1.f;
+}
+
+}  // namespace
 
 void print_tree(const HTMLNode& n, int indent = 0) {
     std::string_view current_tag;
@@ -158,9 +168,16 @@ Browser::Browser() {
         throw std::runtime_error(std::format("Couldn't initialize SDL: {}", SDL_GetError()));
     }
 
+    float content_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
+    if (content_scale <= 0.f) {
+        content_scale = 1.f;
+    }
+    const int win_w = static_cast<int>(std::lround(640.f * content_scale));
+    const int win_h = static_cast<int>(std::lround(480.f * content_scale));
+
     if (!SDL_CreateWindowAndRenderer("Toy Browser",
-                                     640,
-                                     480,
+                                     win_w,
+                                     win_h,
                                      SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY,
                                      &window_,
                                      &renderer_)) {
@@ -286,7 +303,7 @@ void Browser::reflow() {
     // 1. Determine new bounds
     int w, h;
     SDL_GetWindowSizeInPixels(window_, &w, &h);
-    const float scale = SDL_GetWindowPixelDensity(window_);
+    const float scale = window_display_scale(window_);
 
     // 2. Manual Cleanup: Destroy C-style text resources
     // This is the "inline" version of your display list cleanup
@@ -330,7 +347,7 @@ void Browser::process_events() {
 
                 int w, h;
                 SDL_GetWindowSizeInPixels(window_, &w, &h);
-                const float scale = SDL_GetWindowPixelDensity(window_);
+                const float scale = window_display_scale(window_);
 
                 float max_y = std::max(
                     document_->height_ + 2 * constants::v_step * scale - static_cast<float>(h),
@@ -339,7 +356,7 @@ void Browser::process_events() {
                 scroll_ = std::min(scroll_ + constants::scroll_step * scale, max_y);
 
             } else if (event.key.key == SDLK_UP) {
-                const float scale = SDL_GetWindowPixelDensity(window_);
+                const float scale = window_display_scale(window_);
                 scroll_ = std::max(0.f, scroll_ - constants::scroll_step * scale);
             }
         }
