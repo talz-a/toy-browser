@@ -1,35 +1,46 @@
 #pragma once
 
 #include <SDL3_ttf/SDL_ttf.h>
-#include <browser/block_layout.hpp>
-#include <browser/draw_commands.hpp>
-#include <browser/font_cache.hpp>
-#include <browser/html_parser.hpp>
+#include <memory>
+#include <vector>
 
-struct DocumentLayout {
+class BlockLayout;
+class FontCache;
+struct HTMLNode;
+
+class DocumentLayout {
+public:
     DocumentLayout(const HTMLNode* n,
                    TTF_TextEngine* text_engine,
                    FontCache* font_cache,
                    float width,
-                   float scale)
-        : node_{n},
-          width_{width},
-          scale_{scale},
-          font_cache_{font_cache},
-          text_engine_{text_engine} {}
+                   float scale);
+
+    ~DocumentLayout();
+
+    DocumentLayout(const DocumentLayout&) = delete;
+    DocumentLayout& operator=(const DocumentLayout&) = delete;
+    DocumentLayout(DocumentLayout&&) = delete;
+    DocumentLayout& operator=(DocumentLayout&&) = delete;
 
     void layout();
 
-    [[nodiscard]] std::vector<DrawCmd> paint() const { return display_list_; };
+    [[nodiscard]] float x() const noexcept { return x_; }
+    [[nodiscard]] float y() const noexcept { return y_; }
+    [[nodiscard]] float width() const noexcept { return width_; }
+    [[nodiscard]] float height() const noexcept { return height_; }
+    [[nodiscard]] const std::vector<std::unique_ptr<BlockLayout>>& children() const noexcept {
+        return children_;
+    }
 
+private:
     const HTMLNode* node_;
-    const BlockLayout* parent_ = nullptr;
-    float width_;
+    float viewport_width_;
     float scale_;
 
     std::vector<std::unique_ptr<BlockLayout>> children_;
-    std::vector<DrawCmd> display_list_;
 
+    float width_{};
     float height_{};
     float x_{};
     float y_{};

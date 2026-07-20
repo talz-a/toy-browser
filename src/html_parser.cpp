@@ -1,9 +1,33 @@
 #include <algorithm>
+#include <array>
 #include <browser/html_parser.hpp>
 #include <browser/utils.hpp>
 #include <ranges>
 #include <string>
+#include <string_view>
 #include <vector>
+
+namespace {
+
+constexpr std::array<std::string_view, 14> SELF_CLOSING_TAGS = {"area",
+                                                                "base",
+                                                                "br",
+                                                                "col",
+                                                                "embed",
+                                                                "hr",
+                                                                "img",
+                                                                "input",
+                                                                "link",
+                                                                "meta",
+                                                                "param",
+                                                                "source",
+                                                                "track",
+                                                                "wbr"};
+
+constexpr std::array<std::string_view, 9> HEAD_TAGS =
+    {"base", "basefont", "bgsound", "noscript", "link", "meta", "title", "style", "script"};
+
+}  // namespace
 
 std::unique_ptr<HTMLNode> HTMLParser::parse() {
     std::string text;
@@ -59,27 +83,24 @@ void HTMLParser::add_tag(std::string_view raw_tag) {
 
         const auto& parent = unfinished_.back();
         parent->children.push_back(std::move(node));
-
-    } else if (std::ranges::contains(SELF_CLOSING_TAGS, tag)) {
-        const auto& parent = unfinished_.back();
-
-        auto new_node = std::make_unique<HTMLNode>();
-        new_node->data = Element{.tag = std::string(tag), .attributes = std::move(attributes)};
-        new_node->parent = parent.get();
-
-        parent->children.push_back(std::move(new_node));
-    } else {
-        HTMLNode* parent = unfinished_.empty() ? nullptr : unfinished_.back().get();
-
-        auto new_node = std::make_unique<HTMLNode>();
-        new_node->data = Element{.tag = std::string(tag), .attributes = std::move(attributes)};
-        new_node->parent = parent;
-
-        unfinished_.push_back(std::move(new_node));
+        return;
     }
+
+    const bool is_self_closing = std::ranges::contains(SELF_CLOSING_TAGS, tag);
+    HTMLNode* parent = unfinished_.empty() ? nullptr : unfinished_.back().get();
+    auto new_node = std::make_unique<HTMLNode>();
+    new_node->data = Element{.tag = std::move(tag), .attributes = std::move(attributes)};
+    new_node->parent = parent;
+
+    if (is_self_closing) {
+        parent->children.push_back(std::move(new_node));
+        return;
+    }
+
+    unfinished_.push_back(std::move(new_node));
 }
 
-std::pair<Tag, Attributes> HTMLParser::parse_attributes(std::string_view text) {
+std::pair<std::string, Attributes> HTMLParser::parse_attributes(std::string_view text) {
     Attributes attributes;
     if (text.empty()) return {"", attributes};
 
@@ -136,12 +157,13 @@ std::pair<Tag, Attributes> HTMLParser::parse_attributes(std::string_view text) {
 
 void HTMLParser::implicit_tags(std::optional<std::string_view> tag) {
     while (true) {
-        const auto open_tags =
-            unfinished_ | std::views::filter([](auto&& node) {
-                return std::holds_alternative<Element>(node->data);
-            }) |
-            std::views::transform([](auto&& node) { return std::get<Element>(node->data).tag; }) |
-            std::ranges::to<std::vector>();
+        const auto open_tags = unfinished_ | std::views::filter([](const auto& node) {
+                                   return std::holds_alternative<Element>(node->data);
+                               }) |
+                               std::views::transform([](const auto& node) -> std::string_view {
+                                   return std::get<Element>(node->data).tag;
+                               }) |
+                               std::ranges::to<std::vector<std::string_view>>();
 
         // 1. If empty and first tag isn't <html>, add <html>.
         if (open_tags.empty() && tag != "html") {

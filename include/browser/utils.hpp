@@ -9,6 +9,11 @@
 #include <unordered_map>
 #include <vector>
 
+template <typename... Fs>
+struct match : Fs... {
+    using Fs::operator()...;
+};
+
 // @TODO: Maybe move this to a better place. Make sure to double check this works when using it with
 // BlockLayout.
 template <typename Tree>

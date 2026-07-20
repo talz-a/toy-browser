@@ -1,51 +1,54 @@
 #pragma once
 
-#include <SDL3_ttf/SDL_ttf.h>
+#include <browser/sdl_raii.hpp>
+#include <iostream>
 #include <map>
 #include <print>
 #include <string>
-#include <tuple>
+#include <string_view>
+#include <utility>
 
-struct FontCache {
+class FontCache {
+public:
     FontCache() = default;
 
     FontCache(const FontCache&) = delete;
     FontCache& operator=(const FontCache&) = delete;
 
-    ~FontCache() { clear(); }
+    [[nodiscard]] TTF_Font* get_font(int point_size,
+                                     std::string_view weight,
+                                     std::string_view style) {
+        FontKey key{point_size, std::string{weight}, std::string{style}};
 
-    void clear() {
-        for (auto& [key, font] : fonts_) {
-            if (font) TTF_CloseFont(font);
-        }
-        fonts_.clear();
-    }
-
-    TTF_Font* get_font(int size, const std::string& weight, const std::string& style) {
-        auto key = std::make_tuple(size, weight, style);
-
-        if (fonts_.contains(key)) {
-            return fonts_[key];
+        if (auto it = fonts_.find(key); it != fonts_.end()) {
+            return it->second.get();
         }
 
-        TTF_Font* new_font =
-            TTF_OpenFont("assets/segoeui.ttf", static_cast<float>(size));
+        auto font = TTFFontPtr{TTF_OpenFont("assets/segoeui.ttf", static_cast<float>(point_size))};
 
-        if (!new_font) {
-            std::println(stderr, "Warning: Failed to load font size {}", size);
+        if (!font) {
+            std::println(std::cerr, "Warning: Failed to load font size {}", point_size);
             return nullptr;
         }
 
-        int sdl_style = TTF_STYLE_NORMAL;
+        auto sdl_style = TTF_STYLE_NORMAL;
         if (weight == "bold") sdl_style |= TTF_STYLE_BOLD;
         if (style == "italic") sdl_style |= TTF_STYLE_ITALIC;
 
-        TTF_SetFontStyle(new_font, sdl_style);
-        TTF_SetFontHinting(new_font, TTF_HINTING_LIGHT);
+        TTF_SetFontStyle(font.get(), sdl_style);
+        TTF_SetFontHinting(font.get(), TTF_HINTING_LIGHT);
 
-        fonts_[key] = new_font;
-        return new_font;
+        return fonts_.try_emplace(std::move(key), std::move(font)).first->second.get();
     }
 
-    std::map<std::tuple<int, std::string, std::string>, TTF_Font*> fonts_;
+private:
+    struct FontKey {
+        int point_size;
+        std::string weight;
+        std::string style;
+
+        auto operator<=>(const FontKey&) const = default;
+    };
+
+    std::map<FontKey, TTFFontPtr> fonts_;
 };

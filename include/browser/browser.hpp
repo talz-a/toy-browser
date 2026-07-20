@@ -1,36 +1,45 @@
 #pragma once
 
-#include <SDL3/SDL.h>
-#include <SDL3_ttf/SDL_ttf.h>
 #include <browser/document_layout.hpp>
 #include <browser/draw_commands.hpp>
 #include <browser/font_cache.hpp>
-#include <browser/html_parser.hpp>
+#include <browser/html_node.hpp>
+#include <browser/sdl_raii.hpp>
 #include <browser/url.hpp>
 #include <expected>
+#include <memory>
+#include <optional>
+#include <vector>
 
-struct Browser {
+class Browser {
+public:
     Browser();
     ~Browser();
 
-    std::expected<void, std::string> load(const Url& target_url);
+    Browser(const Browser&) = delete;
+    Browser& operator=(const Browser&) = delete;
+    Browser(Browser&&) = delete;
+    Browser& operator=(Browser&&) = delete;
+
+    [[nodiscard]] std::expected<void, UrlError> load(const Url& target_url);
 
     void run();
+
+private:
     void reflow();
     void process_events();
     void render();
 
     float scroll_ = 0.0f;
-    std::optional<DocumentLayout> document_;
-
     bool is_running_ = false;
 
-    SDL_Window* window_ = nullptr;
-    SDL_Renderer* renderer_ = nullptr;
-
-    FontCache font_cache_{};
-    TTF_TextEngine* text_engine_ = nullptr;
-
-    std::vector<DrawCmd> display_list_;
+    SDLRuntime sdl_runtime_;
+    SDLWindowPtr window_;
+    SDLRendererPtr renderer_;
+    TTFRuntime ttf_runtime_;
+    TTFTextEnginePtr text_engine_;
+    FontCache font_cache_;
     std::unique_ptr<HTMLNode> nodes_;
+    std::optional<DocumentLayout> document_;
+    std::vector<DrawCmd> display_list_;
 };

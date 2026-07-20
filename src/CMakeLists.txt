@@ -24,6 +24,13 @@ target_link_libraries(toy-browser PRIVATE
 )
 
 target_compile_definitions(toy-browser PRIVATE ASIO_STANDALONE)
+
+if(MSVC)
+    target_compile_options(toy-browser PRIVATE /W4 /permissive-)
+else()
+    target_compile_options(toy-browser PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
 if(WIN32)
     target_compile_definitions(toy-browser PRIVATE _WIN32_WINNT=0x0A00)
 endif()

@@ -1,19 +1,18 @@
 #include <browser/css_parser.hpp>
 #include <browser/utils.hpp>
 #include <cctype>
-#include <expected>
-#include <format>
 #include <memory>
 #include <string_view>
 
 bool TagSelector::matches(const HTMLNode& node) const {
-    auto* el = std::get_if<Element>(&node.data);
-    return el && el->tag == tag_;
+    const auto* element = std::get_if<Element>(&node.data);
+    return element && element->tag == tag_;
 }
 
 DescendantSelector::DescendantSelector(Selector ancestor, TagSelector descendant)
-    : ancestor_{std::move(ancestor)}, descendant_{std::move(descendant)} {
-    priority_ = selector_priority(ancestor_) + descendant_.priority_;
+    : ancestor_{std::move(ancestor)},
+      descendant_{std::move(descendant)},
+      priority_{static_cast<std::uint16_t>(selector_priority(ancestor_) + descendant_.priority())} {
 }
 
 bool DescendantSelector::matches(const HTMLNode& node) const {
@@ -26,16 +25,24 @@ bool DescendantSelector::matches(const HTMLNode& node) const {
     return false;
 }
 
-bool matches_any(const Selector& sel, const HTMLNode& node) {
-    return std::visit(
-        [&node](const auto& arg) {
-            if constexpr (requires { *arg; }) {
-                return arg->matches(node);
-            } else {
-                return arg.matches(node);
-            }
-        },
-        sel);
+bool matches_any(const Selector& selector, const HTMLNode& node) {
+    return std::visit(match{
+                          [&](const TagSelector& tag) { return tag.matches(node); },
+                          [&](const std::unique_ptr<DescendantSelector>& descendant) {
+                              return descendant->matches(node);
+                          },
+                      },
+                      selector);
+}
+
+std::uint16_t selector_priority(const Selector& selector) {
+    return std::visit(match{
+                          [](const TagSelector& tag) { return tag.priority(); },
+                          [](const std::unique_ptr<DescendantSelector>& descendant) {
+                              return descendant->priority();
+                          },
+                      },
+                      selector);
 }
 
 void CSSParser::whitespace() {
@@ -44,8 +51,8 @@ void CSSParser::whitespace() {
     }
 }
 
-std::expected<std::string_view, std::string> CSSParser::word() {
-    size_t start = i_;
+std::optional<std::string_view> CSSParser::word() {
+    const std::size_t start = i_;
     while (i_ < s_.size()) {
         if (std::isalnum(static_cast<unsigned char>(s_[i_])) ||
             std::string_view("#-.%").contains(s_[i_])) {
@@ -55,93 +62,81 @@ std::expected<std::string_view, std::string> CSSParser::word() {
         }
     }
 
-    if (!(i_ > start)) {
-        return std::unexpected(std::format("ERROR: Parsing expected word at index {}", i_));
-    }
+    if (i_ == start) return std::nullopt;
 
     return s_.substr(start, i_ - start);
 }
 
-std::expected<void, std::string> CSSParser::literal(char ch) {
-    if (!(i_ < s_.size() && s_[i_] == ch)) {
-        return std::unexpected(std::format("ERROR: Parsing literal '{}' at index {}.", ch, i_));
-    }
+bool CSSParser::literal(char ch) {
+    if (i_ >= s_.size() || s_[i_] != ch) return false;
+
     i_++;
-    return {};
+    return true;
 }
 
-std::expected<CSSPair, std::string> CSSParser::pair() {
-    auto prop = word();
-    if (!prop) return std::unexpected(prop.error());
+std::optional<CSSPair> CSSParser::pair() {
+    const auto property = word();
+    if (!property) return std::nullopt;
 
     whitespace();
 
-    auto lit = literal(':');
-    if (!lit) return std::unexpected(lit.error());
+    if (!literal(':')) return std::nullopt;
 
     whitespace();
 
-    auto val = word();
-    if (!val) return std::unexpected(val.error());
+    const auto value = word();
+    if (!value) return std::nullopt;
 
-    return CSSPair{to_lower(*prop), std::string(*val)};
+    return CSSPair{to_lower(*property), std::string{*value}};
 }
 
-std::optional<char> CSSParser::ignore_until(const std::vector<char>& chars) {
+std::optional<char> CSSParser::ignore_until(std::string_view chars) {
     while (i_ < s_.size()) {
-        if (std::ranges::contains(chars, s_[i_])) {
+        if (chars.contains(s_[i_])) {
             return s_[i_];
-        } else {
-            i_++;
         }
+        i_++;
     }
 
     return std::nullopt;
 }
 
-CSSBody CSSParser::body() {
-    CSSBody pairs;
+CSSBody CSSParser::parse_declarations() {
+    CSSBody declarations;
 
     while (i_ < s_.size() && s_[i_] != '}') {
-        auto parse_pair_sequence = [&]() -> std::expected<void, std::string> {
-            auto parsed_pair = pair();
-            if (!parsed_pair) return std::unexpected(parsed_pair.error());
-
-            pairs[parsed_pair->first] = parsed_pair->second;
+        auto declaration = pair();
+        if (declaration) {
+            declarations.insert_or_assign(std::move(declaration->first),
+                                          std::move(declaration->second));
             whitespace();
 
-            auto semi = literal(';');
-            if (!semi) return std::unexpected(semi.error());
-
-            whitespace();
-            return {};
-        }();
-
-        if (!parse_pair_sequence) {
-            auto why = ignore_until({';', '}'});
-            if (why == ';') {
-                // @NOTE: Fix this later.
-                std::ignore = literal(';');
+            if (literal(';')) {
                 whitespace();
-            } else {
-                break;
+                continue;
             }
         }
+
+        const auto delimiter = ignore_until(";}");
+        if (delimiter != ';') break;
+
+        i_++;
+        whitespace();
     }
 
-    return pairs;
+    return declarations;
 }
 
-std::expected<Selector, std::string> CSSParser::selector_node() {
-    auto first_tag = word();
-    if (!first_tag) return std::unexpected(first_tag.error());
+std::optional<Selector> CSSParser::selector_node() {
+    const auto first_tag = word();
+    if (!first_tag) return std::nullopt;
 
     Selector out = TagSelector(to_lower(*first_tag));
     whitespace();
 
     while (i_ < s_.size() && s_[i_] != '{') {
-        auto tag = word();
-        if (!tag) return std::unexpected(tag.error());
+        const auto tag = word();
+        if (!tag) return std::nullopt;
 
         TagSelector descendant = TagSelector(to_lower(*tag));
         out = std::make_unique<DescendantSelector>(std::move(out), std::move(descendant));
@@ -151,40 +146,35 @@ std::expected<Selector, std::string> CSSParser::selector_node() {
     return out;
 }
 
+std::optional<CSSRule> CSSParser::rule() {
+    whitespace();
+    if (i_ >= s_.size()) return std::nullopt;
+
+    auto selector = selector_node();
+    if (!selector || !literal('{')) return std::nullopt;
+
+    whitespace();
+    auto declarations = parse_declarations();
+
+    if (!literal('}')) return std::nullopt;
+
+    return CSSRule{std::move(*selector), std::move(declarations)};
+}
+
 std::vector<CSSRule> CSSParser::parse() {
     std::vector<CSSRule> rules;
 
     while (i_ < s_.size()) {
-        auto parse_rule = [&]() -> std::expected<CSSRule, std::string> {
-            whitespace();
-            if (i_ >= s_.size()) return std::unexpected("EOF");
+        auto parsed_rule = rule();
 
-            auto selector = selector_node();
-            if (!selector) return std::unexpected(selector.error());
-
-            auto brace = literal('{');
-            if (!brace) return std::unexpected(brace.error());
-
-            whitespace();
-            auto css_body = body();
-
-            auto end_brace = literal('}');
-            if (!end_brace) return std::unexpected(end_brace.error());
-
-            return CSSRule{std::move(*selector), std::move(css_body)};
-        }();
-
-        if (parse_rule) {
-            rules.push_back(std::move(*parse_rule));
+        if (parsed_rule) {
+            rules.push_back(std::move(*parsed_rule));
         } else {
-            auto why = ignore_until({'}'});
-            if (why == '}') {
-                // @NOTE: Fix this later.
-                std::ignore = literal('}');
-                whitespace();
-            } else {
-                break;
-            }
+            const auto delimiter = ignore_until("}");
+            if (delimiter != '}') break;
+
+            i_++;
+            whitespace();
         }
     }
 

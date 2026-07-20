@@ -1,84 +1,45 @@
 #pragma once
 
-#include <asio.hpp>
-#include <asio/ssl.hpp>
-#include <browser/utils.hpp>
+#include <cstdint>
 #include <expected>
+#include <string>
 #include <string_view>
+#include <utility>
+#include <variant>
 
-static constexpr uint16_t HTTP_PORT = 80;
-static constexpr uint16_t HTTPS_PORT = 443;
+struct UrlParseError {
+    std::string message;
+};
+struct UrlRequestError {
+    std::string operation;
+    std::string message;
+};
 
-struct Url {
-    [[nodiscard]] static std::expected<Url, std::string> parse_url(std::string_view url);
+using UrlError = std::variant<UrlParseError, UrlRequestError>;
 
-    [[nodiscard]] std::expected<std::string, std::string> request() const;
+[[nodiscard]] std::string url_error_message(const UrlError& error);
 
-    [[nodiscard]] std::expected<Url, std::string> resolve(std::string_view url) const;
+class Url {
+public:
+    [[nodiscard]] static std::expected<Url, UrlError> parse(std::string_view url);
 
-    template <typename Stream>
-    std::expected<std::string, std::string> send_request(Stream& stream,
-                                                         std::string_view request_text) const {
-        asio::error_code ec;
+    [[nodiscard]] std::expected<std::string, UrlError> request() const;
 
-        asio::write(stream, asio::buffer(request_text), ec);
-        if (ec) {
-            return std::unexpected(std::format("ERROR: Write failed: {}.", ec.message()));
-        }
+    [[nodiscard]] std::expected<Url, UrlError> resolve(std::string_view url) const;
 
-        asio::streambuf response_buffer;
-        asio::read_until(stream, response_buffer, "\r\n\r\n", ec);
-        if (ec) {
-            return std::unexpected(std::format("ERROR: Header read failed: {}.", ec.message()));
-        }
+private:
+    enum class Scheme { http, https };
 
-        std::istream response_stream(&response_buffer);
-        std::string status_line;
-        if (!std::getline(response_stream, status_line)) {
-            return std::unexpected("ERROR: Empty response from server.");
-        }
+    static constexpr std::uint16_t HTTP_PORT = 80;
+    static constexpr std::uint16_t HTTPS_PORT = 443;
 
-        if (!status_line.empty() && status_line.back() == '\r') status_line.pop_back();
+    Url(Scheme scheme, std::string host, std::string path, std::uint16_t port)
+        : scheme_(scheme), host_(std::move(host)), path_(std::move(path)), port_(port) {}
 
-        std::unordered_map<std::string, std::string> response_headers;
-        std::string line;
-        while (std::getline(response_stream, line) && line != "\r" && !line.empty()) {
-            if (line.back() == '\r') line.pop_back();
+    [[nodiscard]] std::string_view scheme_name() const noexcept;
 
-            const size_t colon_pos = line.find(':');
-            if (colon_pos != std::string::npos) {
-                std::string header = to_lower(line.substr(0, colon_pos));
-                std::string value = line.substr(colon_pos + 1);
-
-                // Trim whitespace.
-                value.erase(0, value.find_first_not_of(" \t"));
-                auto last = value.find_last_not_of(" \t");
-                if (last != std::string::npos) value.erase(last + 1);
-
-                response_headers[header] = value;
-            }
-        }
-
-        if (response_headers.contains("transfer-encoding")) {
-            return std::unexpected("ERROR: Transfer-Encoding (chunked) is not supported.");
-        }
-
-        if (response_headers.contains("content-encoding")) {
-            return std::unexpected("ERROR: Content-Encoding (compression) is not supported.");
-        }
-
-        asio::read(stream, response_buffer, asio::transfer_all(), ec);
-
-        if (ec && ec != asio::error::eof && ec != asio::ssl::error::stream_truncated) {
-            return std::unexpected(std::format("ERROR: Body read failed: {}.", ec.message()));
-        }
-
-        return std::string{asio::buffers_begin(response_buffer.data()),
-                           asio::buffers_end(response_buffer.data())};
-    }
-
-    std::string scheme_;
+    Scheme scheme_;
     std::string host_;
     std::string path_;
-    uint16_t port_;
+    std::uint16_t port_;
 };

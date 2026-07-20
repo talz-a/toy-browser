@@ -1,15 +1,21 @@
 #pragma once
 
-#include <SDL3/SDL.h>
-#include <SDL3_ttf/SDL_ttf.h>
+#include <SDL3/SDL_pixels.h>
 #include <variant>
 
-struct DrawRectCmd {
-    DrawRectCmd(float x1, float y1, float x2, float y2, SDL_Color color)
-        : top_{y1}, left_{x1}, bottom_{y2}, right_{x2}, color_{color} {}
+struct SDL_Renderer;
+struct TTF_Text;
 
-    void execute(float scroll, SDL_Renderer* renderer) const;
+class DrawRectCmd {
+public:
+    DrawRectCmd(float left, float top, float right, float bottom, SDL_Color color) noexcept;
 
+    void execute(float scroll, SDL_Renderer* renderer) const noexcept;
+
+    [[nodiscard]] float top() const noexcept { return top_; }
+    [[nodiscard]] float bottom() const noexcept { return bottom_; }
+
+private:
     float top_;
     float left_;
     float bottom_;
@@ -17,15 +23,16 @@ struct DrawRectCmd {
     SDL_Color color_;
 };
 
-struct DrawTextCmd {
-    DrawTextCmd(float x1, float y1, TTF_Text* text) : top_{y1}, left_{x1}, text_{text} {
-        int width, height;
-        TTF_GetTextSize(text_, &width, &height);
-        bottom_ = y1 + static_cast<float>(height);
-    }
+class DrawTextCmd {
+public:
+    DrawTextCmd(float left, float top, TTF_Text* text) noexcept;
 
-    void execute(float scroll, SDL_Renderer* renderer) const;
+    void execute(float scroll, SDL_Renderer* renderer) const noexcept;
 
+    [[nodiscard]] float top() const noexcept { return top_; }
+    [[nodiscard]] float bottom() const noexcept { return bottom_; }
+
+private:
     float top_;
     float left_;
     float bottom_;
