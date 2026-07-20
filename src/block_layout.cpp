@@ -40,8 +40,12 @@ BlockLayout::~BlockLayout() = default;
 LineLayout::LineLayout(BlockLayout* parent, LineLayout* previous)
     : parent_{parent}, previous_{previous} {}
 
-TextLayout::TextLayout(TTF_Text* text, TTF_Font* font, LineLayout* parent, TextLayout* previous)
-    : text_{text}, font_{font}, parent_{parent}, previous_{previous} {}
+TextLayout::TextLayout(const HTMLNode* node,
+                       TTF_Text* text,
+                       TTF_Font* font,
+                       LineLayout* parent,
+                       TextLayout* previous)
+    : node_{node}, text_{text}, font_{font}, parent_{parent}, previous_{previous} {}
 
 TextLayout::~TextLayout() = default;
 
@@ -244,7 +248,7 @@ void BlockLayout::word(const HTMLNode& node, const std::string& word_text) {
     LineLayout* line = lines_.back().get();
     TextLayout* previous_word = line->children_.empty() ? nullptr : line->children_.back().get();
     line->children_.push_back(
-        std::make_unique<TextLayout>(word_sdl, current_font, line, previous_word));
+        std::make_unique<TextLayout>(&node, word_sdl, current_font, line, previous_word));
 
     int space_width = 0;
     int space_height = 0;

@@ -97,17 +97,23 @@ private:
 
 class TextLayout {
 public:
-    TextLayout(TTF_Text* text, TTF_Font* font, LineLayout* parent, TextLayout* previous);
+    TextLayout(const HTMLNode* node,
+               TTF_Text* text,
+               TTF_Font* font,
+               LineLayout* parent,
+               TextLayout* previous);
 
     ~TextLayout();
 
     void layout();
 
     [[nodiscard]] std::vector<DrawCmd> paint() const;
+    [[nodiscard]] const HTMLNode& node() const noexcept { return *node_; }
 
 private:
     friend class LineLayout;
 
+    const HTMLNode* node_;
     TTFTextPtr text_;
     TTF_Font* font_;
     LineLayout* parent_;

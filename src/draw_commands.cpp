@@ -2,7 +2,6 @@
 #include <SDL3_ttf/SDL_ttf.h>
 #include <browser/draw_commands.hpp>
 
-
 DrawRectCmd::DrawRectCmd(float left, float top, float right, float bottom, SDL_Color color) noexcept
     : top_{top}, left_{left}, bottom_{bottom}, right_{right}, color_{color} {}
 
